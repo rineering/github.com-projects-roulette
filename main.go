@@ -39,6 +39,7 @@ func main() {
     http.HandleFunc("/api/shutdown", handlers.HandleShutdown)
 	http.HandleFunc("/import-prizes", handlers.HandleImportPrizes)
 	http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
+	http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
 
 	// 2. Маршрут для OBS (корень)
 	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

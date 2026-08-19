@@ -37,6 +37,7 @@ type AdminPageData struct {
 	AppDataPath  		string
 	AvailableTemplates  []string
 	Categories          []string 	  // Список уникальных редкостей для селектора
+	Prizes              []state.Prize // НОВОЕ: Передаем награды в HTML
 }
 
 func HandleHomePage(w http.ResponseWriter, r *http.Request) {
@@ -46,15 +47,6 @@ func HandleHomePage(w http.ResponseWriter, r *http.Request) {
     }
     http.ServeFile(w, r, "static/index.html")
 }
-
-// 1. В существующем HandleAdminPage перед рендерингом шаблона добавляем сбор категорий:
-// catsMap := make(map[string]bool)
-// for _, prize := range currentConfig.Prizes {
-//     if prize.Category != "" { catsMap[prize.Category] = true }
-// }
-// var categories []string
-// for c := range catsMap { categories = append(categories, c) }
-// Передаем categories в AdminPageData{..., Categories: categories}
 
 // HandleAdminPage отвечает за отображение главной страницы админки
 func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
@@ -111,15 +103,12 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	baseDir, _ := os.UserConfigDir()
 	appDir := filepath.Join(baseDir, "RouletteService")
 
-	// Получаем срез наград через вызов функции из пакета state
-	allPrizes := state.GetPrizes()
-
-	catsMap := make(map[string]bool)
-	for _, prize := range allPrizes {
-		if prize.Category != "" { catsMap[prize.Category] = true }
-	}
-	var categories []string
-	for c := range catsMap { categories = append(categories, c) }
+	// catsMap := make(map[string]bool)
+	// for _, prize := range allPrizes {
+	// 	if prize.Category != "" { catsMap[prize.Category] = true }
+	// }
+	// var categories []string
+	// for c := range catsMap { categories = append(categories, c) }
 
 	// Собираем объединенные данные для страницы в структуру
 	data := AdminPageData{
@@ -128,7 +117,8 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 		AlertStatus:        status,                             // Передаем статус (success/error) в HTML
 		AppDataPath:        appDir,                             // Путь к скрытым файлам
 		AvailableTemplates: available,                          // Список папок для таба "Внешний вид"
-		Categories: 		categories,
+		Categories: 		state.GetUniqueCategories(),
+		Prizes: 			state.GetPrizes(),
 	}
 
 	// Устанавливаем заголовки ответа и рендерим страницу в браузер
@@ -274,25 +264,43 @@ func HandleImportPrizes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[Import] Успешно импортировано наград: %d", len(prizes))
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
 }
 
 // Вспомогательная функция парсинга «умного» разворота объединенных ячеек
 func downloadAndParsePrizes(url string) ([]state.Prize, error) {
+	if strings.Contains(url, "/edit") {
+		// Отрезаем всё, что идет после /edit (включая сам /edit)
+		parts := strings.Split(url, "/edit")
+		// И собираем прямую ссылку на экспорт первого листа в формате CSV
+		url = parts[0] + "/export?format=csv"
+		
+		gid := strings.Split(parts[1], "#")
+		if len(gid) > 1 {
+			url += "&" + gid[1]
+		}
+	}
+	
+	log.Printf("[Parser] Итоговый URL для запроса к Google: %s", url)
+		
+	
+	log.Printf("[Parser] Запрос к эндпоинту Google: %s", url)
+
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("не удалось выполнить запрос: %w", err)
 	}
 	defer resp.Body.Close()
 
-	reader := csv.NewReader(resp.Body)
-	if strings.Contains(url, "output=tsv") {
-		reader.Comma = '\t'
-	} else {
-		reader.Comma = ','
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("google вернул статус: %s", resp.Status)
 	}
-	reader.FieldsPerRecord = -1 
 
+	reader := csv.NewReader(resp.Body)
+	reader.Comma = ',' // Так как мы принудительно засилили format=csv
+	reader.FieldsPerRecord = -1
+	reader.LazyQuotes = true 
+	
 	var newPrizes []state.Prize
 	currentRarity := ""
 	currentWeight := 1
@@ -309,21 +317,19 @@ func downloadAndParsePrizes(url string) ([]state.Prize, error) {
 
 		if isFirstRow {
 			isFirstRow = false
-			continue // Пропускаем строку-шапку (Награда, Редкость, Вероятность)
+			continue
 		}
 
 		if len(record) < 1 || strings.TrimSpace(record[0]) == "" {
-			continue // Если нет названия награды, пропускаем строку
+			continue
 		}
 
 		prizeName := strings.TrimSpace(record[0])
 
-		// Stateful-парсинг: если колонка B заполнена, запоминаем новую редкость
 		if len(record) > 1 && strings.TrimSpace(record[1]) != "" {
 			currentRarity = strings.TrimSpace(record[1])
 		}
 
-		// Если колонка C заполнена, парсим и запоминаем новый процент
 		if len(record) > 2 && strings.TrimSpace(record[2]) != "" {
 			weightStr := strings.ReplaceAll(record[2], "%", "")
 			weightStr = strings.TrimSpace(weightStr)
@@ -333,7 +339,7 @@ func downloadAndParsePrizes(url string) ([]state.Prize, error) {
 		}
 
 		newPrizes = append(newPrizes, state.Prize{
-			Category: currentRarity, 
+			Category: currentRarity,
 			Name:     prizeName,
 			Weight:   currentWeight,
 		})
@@ -371,5 +377,59 @@ func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 		log.Println("[Manual] Ручной режим отключен. Доступ к DA восстановлен.")
 	}()
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
+}
+
+func HandleSavePrizesList(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Парсим мульти-инпуты формы (массивы prize_name[], prize_category[], prize_weight[])
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Ошибка парсинга формы", http.StatusBadRequest)
+		return
+	}
+
+	names := r.Form["prize_name[]"]
+	categories := r.Form["prize_category[]"]
+	weights := r.Form["prize_weight[]"]
+
+	var updatedPrizes []state.Prize
+
+	for i := 0; i < len(names); i++ {
+		// Проверяем границы срезов, на всякий случай
+		if i >= len(categories) || i >= len(weights) {
+			break
+		}
+
+		name := strings.TrimSpace(names[i])
+		category := strings.TrimSpace(categories[i])
+		
+		weight, err := strconv.Atoi(weights[i])
+		if err != nil || weight < 1 {
+			weight = 1
+		}
+
+		if name != "" {
+			updatedPrizes = append(updatedPrizes, state.Prize{
+				Name:     name,
+				Category: category,
+				Weight:   weight,
+			})
+		}
+	}
+
+	// Сохраняем получившийся список в стейт и на диск в state.json
+	if err := state.UpdatePrizes(updatedPrizes); err != nil {
+		log.Printf("[Admin] Ошибка сохранения отредактированных наград: %v", err)
+		http.Error(w, "Ошибка сохранения списка", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[Admin] Список наград успешно отредактирован вручную. Всего: %d", len(updatedPrizes))
+	
+	// Перенаправляем обратно на главную
+	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
 }

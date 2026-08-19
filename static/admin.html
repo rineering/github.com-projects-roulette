@@ -57,7 +57,7 @@
             <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates-content" type="button">🎨 Шаблоны оформления</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-content" type="button">🕹️ Ручной режим</button>
+            <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button">🕹️ Ручной режим</button>
         </li>
     </ul>
 
@@ -222,25 +222,120 @@
             </form>
         </div>
 
-        <!-- ТАБ 3: Ручной запуск -->
-        <div class="tab-pane fade" id="manual-content" role="tabpanel">
-            <h4 class="mb-3">Запуск ручного вращения</h4>
-            
-            <form action="/save-manual" method="POST" class="col-md-6">
-                <div class="card p-4">
-                    <div class="mb-3">
-                        <label for="categorySelect" class="form-label">Режим ручного запуска:</label>
-                        <select class="form-select" id="categorySelect" name="category" required>
-                            <option value="all" selected>🎲 Общий запуск (Все категории с учетом % из таблицы)</option>
-                            <option disabled>─────────────────────────</option>
-                            {{range .Categories}}
-                                <option value="{{.}}">🎯 Только редкость: {{.}}</option>
-                            {{end}}
-                        </select>
+        <!-- ТАБ: НАГРАДЫ И РУЧНОЙ РЕЖИМ -->
+        <div class="tab-pane fade" id="manual" role="tabpanel">
+            <h4 class="mb-3">Управление наградами и ручным запуском</h4>
+                
+                <!-- БЛОК 1: ИМПОРТ -->
+                <div class="card mb-4 border-primary shadow-sm">
+                    <div class="card-header bg-primary text-white font-weight-bold">
+                        📥 Импортировать награды из Google Spreadsheets
                     </div>
-                    <button type="submit" class="btn btn-warning btn-lg w-100">🚀 Запустить рулетку</button>
+                    <div class="card-body">
+                        <form action="/import-prizes" method="POST" class="row g-3 align-items-center">
+                            <div class="col-md-9">
+                                <input type="url" class="form-control" name="google_sheets_url" 
+                                    placeholder="https://google.com" required>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100">🔄 Импортировать</button>
+                            </div>
+                        </form>
+                        <div class="form-text text-muted mt-2">
+                            Ссылка не сохраняется в конфигурационный файл на сервере и удерживается только в текущей сессии.
+                        </div>
+                    </div>
                 </div>
-            </form>
+
+                <!-- БЛОК 2: СОЗДАНИЕ И РЕДАКТИРОВАНИЕ -->
+                <div class="card mb-4 border-secondary shadow-sm">
+                    <div class="card-header bg-secondary text-white font-weight-bold">
+                        🛠 Создание и редактирование наград
+                    </div>
+                    <div class="card-body">
+                        <form action="/save-prizes-list" method="POST" id="prizesForm">
+                            <div id="prizesContainer">
+                                <!-- Динамически выводим текущие награды из стейта -->
+                                {{range $index, $prize := .Prizes}}
+                                <div class="row g-2 mb-2 prize-row align-items-center">
+                                    <div class="col-md-5">
+                                        <input type="text" class="form-control" name="prize_name[]" value="{{$prize.Name}}" placeholder="Награда" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <input type="text" class="form-control" name="prize_category[]" value="{{$prize.Category}}" placeholder="Категория (Редкость)" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="number" class="form-control" name="prize_weight[]" value="{{$prize.Weight}}" placeholder="Процент / Вес" min="1" required>
+                                    </div>
+                                    <div class="col-md-1 text-end">
+                                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeRow(this)">✕</button>
+                                    </div>
+                                </div>
+                                {{end}}
+                            </div>
+                            
+                            <div class="mt-3 d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-success" onclick="addRow()">➕ Добавить награду</button>
+                                <button type="submit" class="btn btn-success px-4">💾 Сохранить список</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- БЛОК 3: ЗАПУСК ВРУЧНУЮ -->
+                <div class="card border-warning shadow-sm">
+                    <div class="card-header bg-warning text-dark font-weight-bold">
+                        🚀 Запуск вручную
+                    </div>
+                    <div class="card-body">
+                        <form action="/save-manual" method="POST" class="row g-3 align-items-center">
+                            <div class="col-md-4">
+                                <label for="categorySelect" class="form-label mb-0 fw-bold">Выбор категории:</label>
+                            </div>
+                            <div class="col-md-5">
+                                <select class="form-select" id="categorySelect" name="category" required>
+                                    <option value="all" selected>🎲 [Все категории]</option>
+                                    {{range .Categories}}
+                                        <option value="{{.}}">🎯 {{.}}</option>
+                                    {{end}}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">Запустить</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            <!-- Скрипт для динамического добавления/удаления строк наград прямо в браузере -->
+            <script>
+            function addRow() {
+                const container = document.getElementById('prizesContainer');
+                const row = document.createElement('div');
+                row.className = 'row g-2 mb-2 prize-row align-items-center';
+                row.innerHTML = `
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" name="prize_name[]" placeholder="Награда" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="prize_category[]" placeholder="Категория (Редкость)" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" name="prize_weight[]" value="1" placeholder="Процент / Вес" min="1" required>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeRow(this)">✕</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            }
+
+            function removeRow(button) {
+                const row = button.closest('.prize-row');
+                row.remove();
+            }
+            </script>
+
         </div>
     </div>
 
@@ -252,5 +347,30 @@
 <!-- Подключаем JavaScript от Bootstrap, чтобы табы переключались сами по клику -->
 <script src="/static/js/bootstrap.bundle.min.js"></script>
 <script src="/static/js/admin.js"></script>
+<script src="https://jsdelivr.net"></script>
+
+<script>
+// Автоматическое переключение таба при загрузке страницы на основе хэша в URL
+document.addEventListener("DOMContentLoaded", function() {
+    var hash = window.location.hash;
+    if (hash) {
+        // Ищем кнопку таба, у которой data-bs-target совпадает с хэшем
+        var triggerEl = document.querySelector('button[data-bs-target="' + hash + '"]');
+        if (triggerEl) {
+            var tab = new bootstrap.Tab(triggerEl);
+            tab.show();
+        }
+    }
+
+    // Бонус: сохраняем хэш в адресную строку, когда пользователь кликает по табам вручную
+    var tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabButtons.forEach(function(button) {
+        button.addEventListener('shown.bs.tab', function (e) {
+            var targetHash = e.target.getAttribute('data-bs-target');
+            history.replaceState(null, null, targetHash);
+        });
+    });
+});
+</script>
 </body>
 </html>
