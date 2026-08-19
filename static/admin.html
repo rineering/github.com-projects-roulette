@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления рулеткой</title>
+    <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/custom.css" rel="stylesheet">
+</head>
+<body>
+
+<!-- Проверяем, пришел ли статус успеха -->
+{{if eq .AlertStatus "success"}}
+<div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+    <strong>Успех!</strong> Настройки рулетки успешно сохранены и применены.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{{end}}
+
+<!-- Проверяем, пришел ли статус ошибки -->
+{{if eq .AlertStatus "error"}}
+<div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+    <strong>Ошибка!</strong> Не удалось сохранить настройки. Проверьте правильность заполнения числовых полей.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{{end}}
+
+<!-- Контейнер для всплывающих уведомлений в правом верхнем углу -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11">
+    <div id="liveToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <!-- Здесь текст ошибки или успеха -->
+            <div id="toastBody" class="toast-body"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<div class="container admin-container">
+    <!-- Шапка -->
+    <div class="text-center mb-4">
+        <h1 class="fw-bold text-warning d-inline-flex align-items-center gap-2">
+            <span>🎛️</span> Roulette-Go Control Panel
+        </h1>
+        <p class="text-muted small">Микросервис управления интерактивным стрим-виджетом</p>
+    </div>
+
+    <!-- 1. Навигация по табам -->
+    <ul class="nav nav-pills mb-4 nav-justified" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button">📔 Справка</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link active" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-content" type="button">⚙️ Настройки</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates-content" type="button">🎨 Шаблоны оформления</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-content" type="button">🕹️ Ручной режим</button>
+        </li>
+    </ul>
+
+    <!-- 2. Содержимое вкладок -->
+    <div class="tab-content" id="adminTabsContent">
+        <!-- ТАБ 0: Инструкция -->
+         <div class="tab-pane fade" id="info" role="tabpanel">
+            <h4 class="mb-3">Справка по работе микросервиса</h4>
+            
+            <div class="card bg-light mb-4">
+                <div class="card-body text-grey">
+                    <h5>Как запустить рулетку в OBS?</h5>
+                    <ol>
+                        <li>Настройте интеграцию на вкладке <strong>«Подключение»</strong>.</li>
+                        <li>В OBS добавьте новый источник <strong>«Браузер» (Browser Source)</strong>.</li>
+                        <li>В поле URL вставьте адрес: <code class="bg-white p-1 rounded">http://localhost:{{.Config.ServerPort}}/</code></li>
+                        <li>Задайте ширину и высоту в соответствии с вашим дизайном рулетки.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark fw-bold">
+                    📍 Расположение служебных файлов программы
+                </div>
+                <div class="card-body">
+                    <p>Все ваши настройки, текущие остатки донатов и системные логи скрыты в вашей операционной системе, чтобы исключить случайное удаление.</p>
+                    <p class="mb-2"><strong>Путь к папке приложения:</strong></p>
+                    <div class="input-group">
+                        <!-- Выводим наш динамический путь в поле, откуда его удобно скопировать -->
+                        <input type="text" class="form-control bg-white" value="{{.AppDataPath}}" readonly id="pathInput">
+                        <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('pathInput').value); alert('Путь скопирован!');">Скопировать путь</button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        В этой папке вы найдете: 
+                        <br>• <code>config.json</code> — системные настройки
+                        <br>• <code>state.json</code> — неделимый остаток баланса
+                        <br>• <code>app.log</code> — файл системных логов (если программа работает некорректно, загляните в него)
+                    </small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ТАБ 1: Настройки -->
+        <div class="tab-pane fade show active" id="settings-content" role="tabpanel">
+            <form id="configForm" method="POST" action="/api/save-config">
+                <div class="card p-4">
+                    <div class="row g-4">
+                        
+                        <!-- Левая колонка: Системные настройки -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3 text-warning section-title">🔌 Системные параметры</h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Локальный порт сервера:</label>
+                                <input type="text" class="form-control" name="server_port" value="{{.Config.ServerPort}}" placeholder="например: 8080">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">DonationAlerts ID пользователя:</label>
+                                <input type="text" class="form-control" name="da_user_id" value="{{.Config.DaUserID}}" placeholder="ID из личного кабинета" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">DonationAlerts API Токен:</label>
+                                <div class="input-group">
+                                    <input type="password" id="daTokenInput" class="form-control" name="da_token" value="{{.Config.SocketConnectionToken}}" placeholder="Токен подключения" required>
+                                    <button class="btn btn-outline-secondary border-secondary text-muted" type="button" onclick="toggleTokenVisibility()">👁️</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Правая колонка: Параметры рулетки -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
+
+                            <div class="mb-3">
+                                <label class="form-label">Минимальная цена прокрутки (руб):</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="min_amount_one_spin" value="{{.Config.MinAmountOneSpin}}">
+                                    <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Таймаут перед запуском (сек):</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="start_delay_seconds" value="{{.Config.StartDelaySeconds}}">
+                                    <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
+                                </div>
+                                <div class="form-text sub-field-text" style="position: fixed;">Время задержки перед стартом анимации колеса.</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Остаток последнего доната:</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" name="saved_donations_tail_balance" step="0.01" value="{{printf "%.2f" .TailBalance}}">
+                                    <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Кнопка сохранения внизу карточки -->
+                    <div class="mt-4 pt-3 border-top border-secondary text-end">
+                        <button type="submit" class="btn btn-warning px-5 fw-bold text-dark">Сохранить изменения</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- ТАБ 2: Загрузка шаблонов -->
+        <div class="tab-pane fade" id="templates-content" role="tabpanel">
+            <h4 class="mb-3">Выбор темы оформления рулетки</h4>
+            <p class="text-muted mb-4">Программа сканирует папку <code>templates/</code> рядом с файлом запуска. Чтобы добавить свой дизайн, просто создайте там новую папку с файлами виджета.</p>
+            
+            <form method="POST" action="/api/save-template">
+                <div class="row">
+                    
+                    <!-- Цикл Go: перебирает найденные папки-шаблоны -->
+                    {{range .AvailableTemplates}}
+                    <div class="col-md-4">
+                        <!-- Подсвечиваем синей рамкой карточку, имя которой совпадает с активным шаблоном из конфига -->
+                        <div class="card mb-3 {{if eq $ .Config.ActiveTemplate .}}border-primary shadow-sm bg-body-tertiary{{end}}">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-capitalize">{{.}}</h5>
+                                <p class="card-text small text-muted">Тема из папки <code>templates/{{.}}</code></p>
+                                
+                                <div class="form-check d-inline-block">
+                                    <input class="form-check-input" type="radio" name="active_template" value="{{.}}" id="tpl-{{.}}" {{if eq $ .Config.ActiveTemplate .}}checked{{end}}>
+                                    <label class="form-check-label fw-semibold" for="tpl-{{.}}">
+                                        {{if eq $ .Config.ActiveTemplate .}}Активен{{else}}Выбрать{{end}}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{else}}
+                    <!-- ЭТОТ БЛОК СРАБОТАЕТ АВТОМАТИЧЕСКИ, ЕСЛИ ПАПОК НЕТ -->
+                    <div class="col-12">
+                        <div class="alert alert-warning border-warning d-flex align-items-center" role="alert">
+                            <span class="fs-4 me-3">⚠️</span>
+                            <div>
+                                <strong>Активных шаблонов не найдено!</strong> <br>
+                                Папка <code>templates/</code> пуста. Создайте в ней хотя бы одну подпапку (например, <code>default</code>) и положите туда файлы вашей рулетки, чтобы они появились в этом списке.
+                            </div>
+                        </div>
+                    </div>
+                    {{end}}
+
+                </div>
+                
+                <!-- Кнопку сохранения показываем только если есть из чего выбирать -->
+                {{if .AvailableTemplates}}
+                <div class="mt-3 border-top pt-3">
+                    <button type="submit" class="btn btn-primary px-4">Сохранить выбор шаблона</button>
+                </div>
+                {{end}}
+            </form>
+        </div>
+
+        <!-- ТАБ 3: Ручной запуск -->
+        <div class="tab-pane fade" id="manual-content" role="tabpanel">
+            <div class="card p-5 text-center">
+                <h5 class="mb-3 text-warning section-title justify-content-center">🕹️ Управление живым эфиром</h5>
+                <p class="text-muted my-3 mx-auto" style="max-width: 500px;">
+                    Используйте эту кнопку для тестирования отображения анимации на стриме в OBS Studio или для проведения ручных розыгрышей (крафтов).
+                </p>
+                <button class="btn btn-danger btn-lg w-100 fw-bold mb-3" onclick="triggerSpin()">🎰 Запустить тестовый прокрут</button>
+            </div>
+        </div>
+
+    </div>
+
+    <a href="/api/shutdown" class="btn btn-danger btn-sm" onclick="return confirm('Вы уверены, что хотите остановить сервер рулетки?')">
+        🛑 Выключить сервер
+    </a>
+</div>
+
+<!-- Подключаем JavaScript от Bootstrap, чтобы табы переключались сами по клику -->
+<script src="/static/js/bootstrap.bundle.min.js"></script>
+<script src="/static/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+:root {
+    --bg-main: #13131a;
+    --bg-card: #1c1c24;
+    --bg-input: #252530;
+    --border-color: #2d2d3d;
+    --accent-color: #ffc107;
+}
+
+body { 
+    background-color: var(--bg-main); 
+    color: #f8f9fa;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.admin-container {
+    max-width: 1000px;
+    margin-top: 3rem;
+    margin-bottom: 5rem;
+}
+
+.card { 
+    background-color: var(--bg-card); 
+    border: 1px solid var(--border-color); 
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
+}
+
+.card-body.text-grey {
+    color: #252530 !important;
+}
+
+/* Кастомизация табов */
+.nav-pills {
+    background-color: var(--bg-card);
+    padding: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+.nav-link { 
+    color: #a0a0b0; 
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-radius: 8px !important;
+}
+.nav-link:hover {
+    color: #fff;
+    background-color: rgba(255,255,255,0.05);
+}
+.nav-link.active { 
+    background-color: var(--accent-color) !important; 
+    color: #000 !important; 
+    font-weight: 600; 
+}
+
+/* Стилизация форм */
+.form-control {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-color);
+    color: #fff !important;
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+}
+.form-control:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.15);
+}
+.form-label {
+    color: #a0a0b0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+}
+.sub-field-text {
+    margin-top: 0rem;
+    font-size: 0.7em;
+}
+
+/* Разделение секций */
+.section-title {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+}
+
+/* Кнопка скрытия токена */
+.password-toggle {
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: #a0a0b0;
+}
+
+/* Плавающий футер для опасных действий */
+.danger-zone-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+.danger-zone-btn:hover { opacity: 1; }
+
+/* Стили для всплывающих уведомлений (Toasts) */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1050;
+}

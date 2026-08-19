@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Казино-Рулетка для ОБС</title>
+    <style>
+        body {
+            background: #111;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            padding-top: 50px;
+        }
+
+        /* Окошко автомата (Экран) */
+        .slot-machine {
+            width: 350px;
+            height: 100px;
+            border: 6px solid gold;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden; /* Прячем призы, которые вылезают за границы */
+            background: #222;
+        }
+
+        /* Длинная лента с призами внутри экрана */
+        .tape {
+            position: absolute;
+            width: 100%;
+            top: 0;
+            left: 0;
+            transition: transform 2s cubic-bezier(0.1, 0.8, 0.3, 1); /* Плавное торможение */
+        }
+
+        /* Стиль каждого отдельного приза в ленте */
+        .prize-item {
+            height: 100px;
+            line-height: 100px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-sizing: border-box;
+            border-bottom: 2px solid #333;
+        }
+
+        /* Контейнер для вылетающих вниз выигранных наград */
+        #won-container {
+            width: 350px;
+            margin: 20px auto;
+            position: relative;
+            height: 300px;
+        }
+
+        /* Стиль для награды, которая падает вниз и растворяется */
+        .falling-prize {
+            width: 100%;
+            height: 60px;
+            line-height: 60px;
+            background: rgba(0, 200, 0, 0.2);
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            color: #0f0;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 10px;
+            opacity: 1;
+            transform: translateY(0);
+            transition: transform 1.5s ease-in, opacity 1.5s ease-in;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎰 Слот-Машина Наград 🎰</h1>
+    <p id="status-text">Ожидание сигнала от Go...</p>
+
+    <!-- Экран автомата -->
+    <div class="slot-machine">
+        <div class="tape" id="prize-tape">
+            <!-- Сюда JavaScript сам добавит список призов -->
+        </div>
+    </div>
+
+    <!-- Сюда будут падать выигранные призы -->
+    <div id="won-container"></div>
+
+    <script>
+        const tape = document.getElementById('prize-tape');
+        const statusText = document.getElementById('status-text');
+        const wonContainer = document.getElementById('won-container');
+
+        // Список возможных наград для генерации ленты
+        const rewards = [
+            "🎁 Скример", "🎮 Выбор игры", "🔇 Без мата 10м", 
+            "⏰ +10 мин стрима", "💥 Сброс наград", "👑 VIP Статус"
+        ];
+
+        // Функция создания бесконечной ленты, чтобы было куда крутить
+        function generateTape() {
+            tape.innerHTML = '';
+            // Повторим список несколько раз для эффекта длинной прокрутки
+            for (let i = 0; i < 20; i++) {
+                const prize = rewards[Math.floor(Math.random() * rewards.length)];
+                const div = document.createElement('div');
+                div.className = 'prize-item';
+                div.innerText = prize;
+                tape.appendChild(div);
+            }
+        }
+        generateTape();
+
+        // Подключаемся к Go
+        const socket = new WebSocket('ws://localhost:8085/ws');
+
+        socket.onopen = () => { statusText.innerText = "🟢 Автомат готов к донатам!"; };
+        socket.onclose = () => { statusText.innerText = "🔴 Нет связи с сервером"; };
+
+        // Очередь для наград, если их выпало сразу несколько
+        let spinQueue = [];
+        isSpinning = false;
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.action === "spin") {
+                // В будущем Go будет присылать сколько раз крутить. 
+                // Для теста просто добавим 3 случайные награды в очередь.
+                spinQueue.push("🎁 Награда А");
+                spinQueue.push("🎮 Награда Б");
+                spinQueue.push("👑 Награда В");
+                
+                processQueue();
+            }
+        };
+
+        function processQueue() {
+            if (isSpinning || spinQueue.length === 0) return;
+            isSpinning = true;
+
+            statusText.innerText = `🎰 Осталось прокрутов: ${spinQueue.length}`;
+            
+            // Генерируем новую случайную ленту, но на 15-е место ставим то, что ДОЛЖНО выпасть
+            generateTape();
+            const winningIndex = 15; 
+            const finalPrizeText = spinQueue.shift(); // Берем первый приз из очереди
+            tape.children[winningIndex].innerText = finalPrizeText;
+
+            // Сбрасываем анимацию в начало
+            tape.style.transition = 'none';
+            tape.style.transform = 'translateY(0)';
+            
+            // Запускаем прокрутку (через минимальный таймаут, чтобы CSS зафиксировал сброс)
+            setTimeout(() => {
+                tape.style.transition = 'transform 2s cubic-bezier(0.1, 0.8, 0.3, 1)';
+                // Сдвигаем ленту вверх на высоту 15 элементов (каждый по 100px)
+                tape.style.transform = `translateY(-${winningIndex * 100}deg)`.replace('deg', 'px');
+            }, 50);
+
+            // Ждем завершения кручения (2 секунды) + 1 секунду удерживаем взгляд
+            setTimeout(() => {
+                // Создаем элемент выигранной награды для падения вниз
+                const dropDiv = document.createElement('div');
+                dropDiv.className = 'falling-prize';
+                dropDiv.innerText = finalPrizeText;
+                wonContainer.prepend(dropDiv);
+
+                // Запускаем эффект падения и растворения
+                setTimeout(() => {
+                    dropDiv.style.transform = 'translateY(150px)';
+                    dropDiv.style.opacity = '0';
+                }, 50);
+
+                // Удаляем элемент из DOM после растворения
+                setTimeout(() => { dropDiv.remove(); }, 1550);
+
+                isSpinning = false;
+                // Запускаем следующую награду из очереди, если она есть
+                processQueue(); 
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
