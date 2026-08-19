@@ -8,15 +8,28 @@ import (
 	"sync"
 )
 
+type Prize struct {
+	Category string `json:"category"`
+	Name     string `json:"name"`
+	Weight   int    `json:"weight"` // Здесь будет храниться процент очищенный от % (например 50, 32)
+}
+
+type Mode struct {
+	ManualMode     bool   `json:"manual_mode"`     // активен ли ручной режим прямо сейчас
+	ManualCategory string `json:"manual_category"` // какая категория крутится в ручном режиме
+}
+
 // State хранит текущий неделимый остаток баланса
 type State struct {
 	SavedDonationsTailBalance int `json:"saved_donations_tail_balance"`
+	Prizes []Prize 				  `json:"prizes"`
 }
 
 var (
 	mu 			sync.RWMutex
 	st 			State
 	statePath 	string
+	rouletteMode Mode
 )
 
 func resolvePath() (string, error) {
@@ -100,4 +113,92 @@ func SetBalance(amount int) error {
 	}
 
 	return nil
+}
+
+// Сохранение состояния (включая награды и копейки) в state.json
+func SaveState() error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	userConfig, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+	dir := filepath.Join(userConfig, "RouletteService")
+	
+	// Сохраняем баланс и награды. Флаги ручного режима зануляем перед сохранением,
+	// чтобы при перезапуске сервиса ручной режим всегда сбрасывался.
+	toSave := st
+	rouletteMode = Mode{false, ""}
+
+	fileBytes, err := json.MarshalIndent(toSave, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, "state.json"), fileBytes, 0644)
+}
+
+// Перезаписать список наград в памяти и сохранить на диск
+func UpdatePrizes(newPrizes []Prize) error {
+	mu.Lock()
+	st.Prizes = newPrizes
+	mu.Unlock()
+
+	return SaveState()
+}
+
+// Безопасное получение копии наград для рандомизатора
+func GetPrizes() []Prize {
+	mu.RLock()
+	defer mu.RUnlock()
+	
+	// Возвращаем копию слайса во избежание data race
+	cp := make([]Prize, len(st.Prizes))
+	copy(cp, st.Prizes)
+	return cp
+}
+
+// Получить список уникальных категорий для селектора админки
+func GetUniqueCategories() []string {
+	mu.RLock()
+	defer mu.RUnlock()
+
+	catsMap := make(map[string]bool)
+	for _, p := range st.Prizes {
+		if p.Category != "" {
+			catsMap[p.Category] = true
+		}
+	}
+
+	var categories []string
+	for c := range catsMap {
+		categories = append(categories, c)
+	}
+	return categories
+}
+
+// Потокобезопасное включение ручного режима
+func SetManualMode(active bool, category string) {
+	mu.Lock()
+	defer mu.Unlock()
+	
+	rouletteMode.ManualMode = active
+	rouletteMode.ManualCategory = category
+	
+	// Флаги ручного режима можно даже НЕ сохранять в state.json,
+	// чтобы при перезапуске микросервиса ручной режим всегда сбрасывался в false!
+}
+
+// Потокобезопасное чтение флага ручного режима
+func IsManualMode() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	return rouletteMode.ManualMode
+}
+
+// Получить текущую ручную категорию
+func GetManualCategory() string {
+	mu.RLock()
+	defer mu.RUnlock()
+	return rouletteMode.ManualCategory
 }

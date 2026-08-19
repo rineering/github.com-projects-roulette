@@ -11,12 +11,15 @@ import (
 	"path/filepath"
 	"time"
 	"strings"
+	"io"
+	"encoding/csv"
 
 	"os/exec"
 	"runtime"
 
 	"roulette/config" // Замените на имя вашего модуля из go.mod
 	"roulette/state"
+	"roulette/da"
 )
 
 var staticFS *embed.FS
@@ -33,6 +36,7 @@ type AdminPageData struct {
 	AlertStatus  		string
 	AppDataPath  		string
 	AvailableTemplates  []string
+	Categories          []string 	  // Список уникальных редкостей для селектора
 }
 
 func HandleHomePage(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +46,15 @@ func HandleHomePage(w http.ResponseWriter, r *http.Request) {
     }
     http.ServeFile(w, r, "static/index.html")
 }
+
+// 1. В существующем HandleAdminPage перед рендерингом шаблона добавляем сбор категорий:
+// catsMap := make(map[string]bool)
+// for _, prize := range currentConfig.Prizes {
+//     if prize.Category != "" { catsMap[prize.Category] = true }
+// }
+// var categories []string
+// for c := range catsMap { categories = append(categories, c) }
+// Передаем categories в AdminPageData{..., Categories: categories}
 
 // HandleAdminPage отвечает за отображение главной страницы админки
 func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
@@ -98,6 +111,16 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	baseDir, _ := os.UserConfigDir()
 	appDir := filepath.Join(baseDir, "RouletteService")
 
+	// Получаем срез наград через вызов функции из пакета state
+	allPrizes := state.GetPrizes()
+
+	catsMap := make(map[string]bool)
+	for _, prize := range allPrizes {
+		if prize.Category != "" { catsMap[prize.Category] = true }
+	}
+	var categories []string
+	for c := range catsMap { categories = append(categories, c) }
+
 	// Собираем объединенные данные для страницы в структуру
 	data := AdminPageData{
 		Config:             config.Get(),                       // Берем актуальный конфиг
@@ -105,6 +128,7 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 		AlertStatus:        status,                             // Передаем статус (success/error) в HTML
 		AppDataPath:        appDir,                             // Путь к скрытым файлам
 		AvailableTemplates: available,                          // Список папок для таба "Внешний вид"
+		Categories: 		categories,
 	}
 
 	// Устанавливаем заголовки ответа и рендерим страницу в браузер
@@ -218,4 +242,134 @@ func OpenBrowser(url string) {
     if err := cmd.Start(); err != nil {
         log.Printf("Не удалось открыть браузер автоматически: %v", err)
     }
+}
+
+// 2. НОВОЕ: Обработчик импорта Google Таблицы с учетом объединенных ячеек
+func HandleImportPrizes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	url := r.FormValue("google_sheets_url")
+	if url == "" {
+		http.Error(w, "URL is required", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("[Import] Запуск скачивания наград по ссылке: %s", url)
+	
+	prizes, err := downloadAndParsePrizes(url)
+	if err != nil {
+		log.Printf("[Import] Ошибка импорта: %v", err)
+		http.Error(w, fmt.Sprintf("Ошибка импорта: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Сохраняем обновленный конфиг с новыми наградами в AppData
+	if err := state.UpdatePrizes(prizes); err != nil {
+		log.Printf("[Import] Ошибка сохранения config.json: %v", err)
+		http.Error(w, "Ошибка сохранения локального конфига", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[Import] Успешно импортировано наград: %d", len(prizes))
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// Вспомогательная функция парсинга «умного» разворота объединенных ячеек
+func downloadAndParsePrizes(url string) ([]state.Prize, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	reader := csv.NewReader(resp.Body)
+	if strings.Contains(url, "output=tsv") {
+		reader.Comma = '\t'
+	} else {
+		reader.Comma = ','
+	}
+	reader.FieldsPerRecord = -1 
+
+	var newPrizes []state.Prize
+	currentRarity := ""
+	currentWeight := 1
+	isFirstRow := true
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if isFirstRow {
+			isFirstRow = false
+			continue // Пропускаем строку-шапку (Награда, Редкость, Вероятность)
+		}
+
+		if len(record) < 1 || strings.TrimSpace(record[0]) == "" {
+			continue // Если нет названия награды, пропускаем строку
+		}
+
+		prizeName := strings.TrimSpace(record[0])
+
+		// Stateful-парсинг: если колонка B заполнена, запоминаем новую редкость
+		if len(record) > 1 && strings.TrimSpace(record[1]) != "" {
+			currentRarity = strings.TrimSpace(record[1])
+		}
+
+		// Если колонка C заполнена, парсим и запоминаем новый процент
+		if len(record) > 2 && strings.TrimSpace(record[2]) != "" {
+			weightStr := strings.ReplaceAll(record[2], "%", "")
+			weightStr = strings.TrimSpace(weightStr)
+			if parsedWeight, err := strconv.Atoi(weightStr); err == nil {
+				currentWeight = parsedWeight
+			}
+		}
+
+		newPrizes = append(newPrizes, state.Prize{
+			Category: currentRarity, 
+			Name:     prizeName,
+			Weight:   currentWeight,
+		})
+	}
+	return newPrizes, nil
+}
+
+// 3. НОВОЕ: Обработчик кнопки запуска ручного режима
+func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	category := r.FormValue("category")
+	state.SetManualMode(true, category)
+
+	// Асинхронно запускаем прокрутку, чтобы не вешать веб-интерфейс админки
+	go func() {
+		// Передаем "all" или конкретную редкость в наш математический селектор
+		prize, err := da.SelectRandomPrize(state.GetPrizes(), category)
+		if err != nil {
+			log.Printf("[Manual] Ошибка выбора награды: %v", err)
+			state.SetManualMode(false, "")
+			return
+		}
+
+		log.Printf("[Roulette] РЕЗУЛЬТАТ ВРАЩЕНИЯ: [%s] %s", prize.Category, prize.Name)
+		
+		// Имитируем длительность анимации рулетки (например, 12 секунд)
+		time.Sleep(12 * time.Second)
+
+		// Автоматически возвращаем к приему донатов от DA
+		state.SetManualMode(false, "")
+		log.Println("[Manual] Ручной режим отключен. Доступ к DA восстановлен.")
+	}()
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
