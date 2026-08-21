@@ -1,0 +1,65 @@
+<form id="configForm" method="POST" action="/api/save-config">
+    <div class="card p-4">
+        <div class="row g-4">
+            
+            <!-- Левая колонка: Системные настройки -->
+            <div class="col-md-6">
+                <h5 class="mb-3 text-warning section-title">🔌 Системные параметры</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label">Локальный порт сервера:</label>
+                    <input type="text" class="form-control" name="server_port" value="{{.Config.ServerPort}}" placeholder="например: 8080">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">DonationAlerts ID пользователя:</label>
+                    <input type="text" class="form-control" name="da_user_id" value="{{.Config.DaUserID}}" placeholder="ID из личного кабинета" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">DonationAlerts API Токен:</label>
+                    <div class="input-group">
+                        <input type="password" id="daTokenInput" class="form-control" name="da_token" value="{{.Config.SocketConnectionToken}}" placeholder="Токен подключения" required>
+                        <button class="btn btn-outline-secondary border-secondary text-muted" type="button" onclick="toggleTokenVisibility()">👁️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Правая колонка: Параметры рулетки -->
+            <div class="col-md-6">
+                <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Минимальная цена прокрутки (руб):</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="min_amount_one_spin" value="{{.Config.MinAmountOneSpin}}">
+                        <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Таймаут перед запуском (сек):</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="start_delay_seconds" value="{{.Config.StartDelaySeconds}}">
+                        <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Остаток последнего доната:</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="saved_donations_tail_balance" step="0.01" value="{{printf "%.2f" .TailBalance}}">
+                        <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Кнопка сохранения внизу карточки -->
+        <div class="mt-4 pt-3 border-top border-secondary text-end">
+            <button type="submit" class="btn btn-warning px-5 fw-bold text-dark">Сохранить изменения</button>
+        </div>
+    </div>
+</form>

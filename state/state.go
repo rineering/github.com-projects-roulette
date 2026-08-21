@@ -11,7 +11,15 @@ import (
 type Prize struct {
 	Category string `json:"category"`
 	Name     string `json:"name"`
-	Weight   int    `json:"weight"` // Здесь будет храниться процент очищенный от % (например 50, 32)
+	Weight   int    `json:"weight"` // Здесь будет храниться процент очищенный от %
+}
+
+// Структура отдельной рулетки
+type RouletteProfile struct {
+	Name           string  `json:"name"`            // название
+	ActiveTemplate string  `json:"active_template"` // шаблон оверлея
+	MinAmountSpin  int     `json:"min_amount_spin"` // минимальный донат для прокрутки
+	Prizes         []Prize `json:"prizes"`          // список наград
 }
 
 type Mode struct {
@@ -21,15 +29,16 @@ type Mode struct {
 
 // State хранит текущий неделимый остаток баланса
 type State struct {
-	SavedDonationsTailBalance int `json:"saved_donations_tail_balance"`
-	Prizes []Prize 				  `json:"prizes"`
+	DonateTail 			int 	`json:"saved_donations_tail_balance"`
+	ActiveProfileName 	string 	`json:"active_profile_name"` // Какая рулетка активна
 }
 
 var (
 	mu 			sync.RWMutex
 	st 			State
 	statePath 	string
-	rouletteMode Mode
+	rouletteMode 	Mode
+	activeProfile 	RouletteProfile
 )
 
 func resolvePath() (string, error) {
@@ -62,7 +71,7 @@ func Load() (*State, error) {
 	}
 
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		st = State{SavedDonationsTailBalance: 0}
+		st = State{DonateTail: 0}
 		data, err := json.MarshalIndent(st, "", "  ")
 		if err != nil {
 			return nil, err
@@ -89,7 +98,7 @@ func Load() (*State, error) {
 func GetBalance() int {
 	mu.RLock()
 	defer mu.RUnlock()
-	return st.SavedDonationsTailBalance
+	return st.DonateTail
 }
 
 // SetBalance принудительно обновляет баланс и записывает в файл
@@ -102,7 +111,7 @@ func SetBalance(amount int) error {
 		return err
 	}
 
-	st.SavedDonationsTailBalance = amount
+	st.DonateTail = amount
 	data, err := json.MarshalIndent(st, "", "  ")
 	if err != nil {
 		return err
@@ -125,23 +134,47 @@ func SaveState() error {
 		return err
 	}
 	dir := filepath.Join(userConfig, "RouletteService")
-	
-	// Сохраняем баланс и награды. Флаги ручного режима зануляем перед сохранением,
-	// чтобы при перезапуске сервиса ручной режим всегда сбрасывался.
-	toSave := st
-	rouletteMode = Mode{false, ""}
 
-	fileBytes, err := json.MarshalIndent(toSave, "", "  ")
+	fileBytes, err := json.MarshalIndent(st, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "state.json"), fileBytes, 0644)
 }
 
+// Инициализация дефолтного профиля при первом старте, если папка пуста
+func InitDefaultProfile() {
+	mu.Lock()
+	defer mu.Unlock()
+	
+	// Если профиль не загружен, создаем базовый заглушечный
+	if len(activeProfile.Prizes) == 0 {
+		activeProfile = RouletteProfile{
+			Name:           "Основная рулетка",
+			ActiveTemplate: "default",
+			MinAmountSpin:  10000, // 100 руб
+			Prizes: []Prize{
+				{Category: "Обычная", Name: "Тестовая награда 1", Weight: 50},
+				{Category: "Редкая", Name: "Тестовая награда 2", Weight: 10},
+			},
+		}
+	}
+}
+
+// Получить имя активного шаблона для OBS
+func GetActiveTemplate() string {
+	mu.RLock()
+	defer mu.RUnlock()
+	if activeProfile.ActiveTemplate == "" {
+		return "default"
+	}
+	return activeProfile.ActiveTemplate
+}
+
 // Перезаписать список наград в памяти и сохранить на диск
 func UpdatePrizes(newPrizes []Prize) error {
 	mu.Lock()
-	st.Prizes = newPrizes
+	activeProfile.Prizes = newPrizes
 	mu.Unlock()
 
 	return SaveState()
@@ -153,8 +186,8 @@ func GetPrizes() []Prize {
 	defer mu.RUnlock()
 	
 	// Возвращаем копию слайса во избежание data race
-	cp := make([]Prize, len(st.Prizes))
-	copy(cp, st.Prizes)
+	cp := make([]Prize, len(activeProfile.Prizes))
+	copy(cp, activeProfile.Prizes)
 	return cp
 }
 
@@ -164,7 +197,7 @@ func GetUniqueCategories() []string {
 	defer mu.RUnlock()
 
 	catsMap := make(map[string]bool)
-	for _, p := range st.Prizes {
+	for _, p := range activeProfile.Prizes {
 		if p.Category != "" {
 			catsMap[p.Category] = true
 		}

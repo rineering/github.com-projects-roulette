@@ -20,6 +20,7 @@ import (
 	"roulette/config" // Замените на имя вашего модуля из go.mod
 	"roulette/state"
 	"roulette/da"
+	"roulette/hub"
 )
 
 var staticFS *embed.FS
@@ -88,7 +89,13 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	// === ЧАСТЬ 2: Загружаем сам файл админки admin.html ===
 
 	// Используем template.ParseFS вместо ParseFiles, чтобы читать файл прямо из памяти .exe
-	tmpl, err := template.ParseFS(staticFS, "static/admin.html")
+	tmpl, err := template.ParseFiles(
+		"static/admin/admin.html", 
+		"static/admin/tab0.html", 
+		"static/admin/tab_conf.html",
+		"static/admin/tab_template.html",
+		"static/admin/tab_handle.html",
+	)
 	if err != nil {
 		log.Printf("[Error] Не удалось прочитать вшитый шаблон: %v", err)
 		http.Error(w, "Ошибка шаблона", http.StatusInternalServerError)
@@ -123,7 +130,9 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 
 	// Устанавливаем заголовки ответа и рендерим страницу в браузер
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	err = tmpl.Execute(w, data)
+
+	// Рендерим именно главный файл
+	err = tmpl.ExecuteTemplate(w, "admin.html", data)
 	if err != nil {
 		log.Printf("[Error] Ошибка заполнения шаблона: %v", err)
 	}
@@ -274,7 +283,7 @@ func downloadAndParsePrizes(url string) ([]state.Prize, error) {
 		parts := strings.Split(url, "/edit")
 		// И собираем прямую ссылку на экспорт первого листа в формате CSV
 		url = parts[0] + "/export?format=csv"
-		
+
 		gid := strings.Split(parts[1], "#")
 		if len(gid) > 1 {
 			url += "&" + gid[1]
@@ -359,22 +368,26 @@ func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 
 	// Асинхронно запускаем прокрутку, чтобы не вешать веб-интерфейс админки
 	go func() {
-		// Передаем "all" или конкретную редкость в наш математический селектор
-		prize, err := da.SelectRandomPrize(state.GetPrizes(), category)
+		prizes := state.GetPrizes()
+		prize, err := da.SelectRandomPrize(prizes, category)
 		if err != nil {
 			log.Printf("[Manual] Ошибка выбора награды: %v", err)
 			state.SetManualMode(false, "")
 			return
 		}
 
-		log.Printf("[Roulette] РЕЗУЛЬТАТ ВРАЩЕНИЯ: [%s] %s", prize.Category, prize.Name)
+		log.Printf("[Roulette] РЕЗУЛЬТАТ ВРАЩЕНИЯ: [%s] %s. Отправка в OBS...", prize.Category, prize.Name)
 		
-		// Имитируем длительность анимации рулетки (например, 12 секунд)
-		time.Sleep(12 * time.Second)
+		// ВЫЗОВ ХАБА: Отправляем команду на запуск колеса в OBS
+		activeTemplate := state.GetActiveTemplate()
+		hub.BroadcastSpin(prize.Name, prize.Category, activeTemplate)
+		
+		// Имитируем время прокрутки рулетки стримера (анимация в CSS длится, например, 10 секунд)
+		// На это время бэкенд блокирует прием сетевых донат-сообщений
+		time.Sleep(10 * time.Second)
 
-		// Автоматически возвращаем к приему донатов от DA
 		state.SetManualMode(false, "")
-		log.Println("[Manual] Ручной режим отключен. Доступ к DA восстановлен.")
+		log.Println("[Manual] Ручной режим завершен, оверлей свободен.")
 	}()
 
 	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)

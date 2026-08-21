@@ -8,12 +8,19 @@ import (
     "roulette/config"
     "roulette/handlers"
     "roulette/state"
+    "roulette/hub"
 )
 
 //go:embed static/*
 var StaticFS embed.FS
 
 func main() {
+	// 1. Инициализация WebSocket Хаба
+	hub.InitHub()
+
+	// 2. Инициализация дефолтных наград в стейте (из Шага 1)
+	state.InitDefaultProfile()
+
 	// Передаем вшитую статику в пакет handlers при старте
 	handlers.InitStatic(&StaticFS)
 
@@ -33,7 +40,7 @@ func main() {
     }
 
     // 2. Регистрируем обработчики из нашего нового пакета handlers
-	http.HandleFunc("/", handlers.HandleHomePage)
+	//http.HandleFunc("/", handlers.HandleHomePage)
     http.HandleFunc("/admin", handlers.HandleAdminPage)
     http.HandleFunc("/api/save-config", handlers.HandleSaveConfig)
     http.HandleFunc("/api/shutdown", handlers.HandleShutdown)
@@ -41,8 +48,9 @@ func main() {
 	http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
 	http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
 
-	// 2. Маршрут для OBS (корень)
-	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// Роут для подключения OBS по WebSockets
+	http.HandleFunc("/", hub.HandleWs)
+	// func(w http.ResponseWriter, r *http.Request) {
 	// 	if r.URL.Path != "/" {
 	// 		http.NotFound(w, r)
 	// 		return
@@ -50,17 +58,11 @@ func main() {
 	// 	// В будущем здесь будет отдаваться виджет рулетки для OBS
 	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	// 	fmt.Fprint(w, "<h1>Тут будет крутиться рулетка в OBS</h1>")
-	// })
+	// }
 
-	// 3. Раздача статических файлов (Bootstrap, CSS, JS)
-	//fs := http.FileServer(http.Dir("./static"))
-	//http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.Handle("/static/", http.FileServer(http.FS(StaticFS)))
 
 	cfg := config.Get()
-	//log.Printf("Панель управления доступна на http://localhost:%s/admin", cfg.ServerPort)
-	//log.Printf("Ссылка для OBS виджета: http://localhost:%s/", cfg.ServerPort)
-
 
     // Запускаем автооткрытие браузера в отдельном потоке (горутине),
     // чтобы код не ждал открытия браузера, а сразу пошел запускать сервер
