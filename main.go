@@ -62,7 +62,7 @@ func main() {
 
 	http.Handle("/static/", http.FileServer(http.FS(StaticFS)))
 
-	cfg := config.Get()
+	cfg := config.GetConfig()
 
     // Запускаем автооткрытие браузера в отдельном потоке (горутине),
     // чтобы код не ждал открытия браузера, а сразу пошел запускать сервер

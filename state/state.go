@@ -16,14 +16,16 @@ type Prize struct {
 
 // Структура отдельной рулетки
 type RouletteProfile struct {
-	Name           string  `json:"name"`            // название
-	ActiveTemplate string  `json:"active_template"` // шаблон оверлея
-	MinAmountSpin  int     `json:"min_amount_spin"` // минимальный донат для прокрутки
-	Prizes         []Prize `json:"prizes"`          // список наград
+	Name           	string  `json:"name"`            // название
+	ActiveTemplate 	string  `json:"active_template"` // шаблон оверлея
+	MinAmountSpin  	int     `json:"min_amount_spin"` // минимальный донат для прокрутки
+	StartDelay 		int    	`json:"start_delay_seconds"`
+	Prizes         	[]Prize `json:"prizes"`          // список наград
 }
 
 type Mode struct {
 	ManualMode     bool   `json:"manual_mode"`     // активен ли ручной режим прямо сейчас
+	ManualTemplate string `json:"manual_template"` // шаблон используемый для ручного запуска
 	ManualCategory string `json:"manual_category"` // какая категория крутится в ручном режиме
 }
 
@@ -234,4 +236,16 @@ func GetManualCategory() string {
 	mu.RLock()
 	defer mu.RUnlock()
 	return rouletteMode.ManualCategory
+}
+
+func GetState() State {
+	mu.RLock()
+	defer mu.RUnlock()
+	return st
+}
+
+func GetActiveProfile() RouletteProfile {
+	mu.RLock()
+	defer mu.RUnlock()
+	return activeProfile
 }

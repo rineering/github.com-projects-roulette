@@ -1,34 +1,157 @@
 <h4 class="mb-3">Справка по работе микросервиса</h4>
-
-<div class="card bg-light mb-4">
-    <div class="card-body text-grey">
-        <h5>Как запустить рулетку в OBS?</h5>
-        <ol>
-            <li>Настройте интеграцию на вкладке <strong>«Подключение»</strong>.</li>
-            <li>В OBS добавьте новый источник <strong>«Браузер» (Browser Source)</strong>.</li>
-            <li>В поле URL вставьте адрес: <code class="bg-white p-1 rounded">http://localhost:{{.Config.ServerPort}}/</code></li>
-            <li>Задайте ширину и высоту в соответствии с вашим дизайном рулетки.</li>
-        </ol>
+                
+    <div class="card bg-light mb-4">
+        <div class="card-body text-grey">
+            <h5>Как запустить рулетку в OBS?</h5>
+            <ol>
+                <li>Настройте интеграцию на вкладке <strong>«Подключение»</strong>.</li>
+                <li>В OBS добавьте новый источник <strong>«Браузер» (Browser Source)</strong>.</li>
+                <li>В поле URL вставьте адрес: <code class="bg-white p-1 rounded">http://localhost:{{.Config.ServerPort}}/</code></li>
+                <li>Задайте ширину и высоту в соответствии с вашим дизайном рулетки.</li>
+            </ol>
+        </div>
     </div>
-</div>
 
-<div class="card p-4 border-warning">
-    <div class="card-header bg-warning text-dark fw-bold">
-        📍 Расположение служебных файлов программы
+
+
+<div id="profilesContainer">
+                <!-- Динамически выводим текущие награды из стейта -->
+                {{range $index, $prize := .Prizes}}
+                <div class="row g-2 mb-2 prize-row align-items-center">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" name="prize_name[]" value="{{$prize.Name}}" placeholder="Награда" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="prize_category[]" value="{{$prize.Category}}" placeholder="Категория (Редкость)" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" name="prize_weight[]" value="{{$prize.Weight}}" placeholder="Процент / Вес" min="1" required>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeRow(this)">✕</button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            
+            <div class="mt-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-success" onclick="addRow()">➕ Добавить награду</button>
+                <button type="submit" class="btn btn-success px-4">💾 Сохранить список</button>
+            </div>
+
+
+
+<form method="POST" action="/api/save-template">
+    <div class="card p-4">
+        <div class="row">
+            
+            <!-- Цикл Go: перебирает найденные папки-шаблоны -->
+            {{range .AvailableTemplates}}
+            <div class="col-md-4">
+                <!-- Подсвечиваем синей рамкой карточку, имя которой совпадает с активным шаблоном из конфига -->
+                <div class="card mb-3 {{if eq $ .Config.ActiveTemplate .}}border-primary shadow-sm bg-body-tertiary{{end}}">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-capitalize">{{.}}</h5>
+                        <p class="card-text small text-muted">Тема из папки <code>templates/{{.}}</code></p>
+                        
+                        <div class="form-check d-inline-block">
+                            <input class="form-check-input" type="radio" name="active_template" value="{{.}}" id="tpl-{{.}}" {{if eq $ .Config.ActiveTemplate .}}checked{{end}}>
+                            <label class="form-check-label fw-semibold" for="tpl-{{.}}">
+                                {{if eq $ .Config.ActiveTemplate .}}Активен{{else}}Выбрать{{end}}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{else}}
+            <!-- ЭТОТ БЛОК СРАБОТАЕТ АВТОМАТИЧЕСКИ, ЕСЛИ ПАПОК НЕТ -->
+            <div class="col-12">
+                <div class="alert alert-warning border-warning d-flex align-items-center" role="alert">
+                    <span class="fs-4 me-3">⚠️</span>
+                    <div>
+                        <strong>Активных шаблонов не найдено!</strong> <br>
+                        Папка <code>templates/</code> пуста. Создайте в ней хотя бы одну подпапку (например, <code>default</code>) и положите туда файлы вашей рулетки, чтобы они появились в этом списке.
+                    </div>
+                </div>
+            </div>
+            {{end}}
+
+        </div>
+        
+        <!-- Кнопку сохранения показываем только если есть из чего выбирать -->
+        {{if .AvailableTemplates}}
+        <div class="mt-3 border-top pt-3">
+            <button type="submit" class="btn btn-primary px-4">Сохранить выбор шаблона</button>
+        </div>
+        {{end}}
+    </div>
+</form>
+
+
+<!-- БЛОК 1: ИМПОРТ -->
+<div class="card mb-4 border-primary shadow-sm">
+    <div class="card-header bg-primary text-white font-weight-bold">
+        📥 Импортировать награды из Google Spreadsheets
     </div>
     <div class="card-body">
-        <p>Все ваши настройки, текущие остатки донатов и системные логи скрыты в вашей операционной системе, чтобы исключить случайное удаление.</p>
-        <p class="mb-2"><strong>Путь к папке приложения:</strong></p>
-        <div class="input-group">
-            <!-- Выводим наш динамический путь в поле, откуда его удобно скопировать -->
-            <input type="text" class="form-control bg-white" value="{{.AppDataPath}}" readonly id="pathInput">
-            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('pathInput').value); alert('Путь скопирован!');">Скопировать путь</button>
+        <form action="/import-prizes" method="POST" class="row g-3 align-items-center">
+            <div class="col-md-9">
+                <input type="url" class="form-control" name="google_sheets_url" 
+                    placeholder="https://google.com" required>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary w-100">🔄 Импортировать</button>
+            </div>
+        </form>
+        <div class="form-text text-muted mt-2">
+            Ссылка не сохраняется в конфигурационный файл на сервере и удерживается только в текущей сессии.
         </div>
-        <small class="text-muted d-block mt-2">
-            В этой папке вы найдете: 
-            <br>• <code>config.json</code> — системные настройки
-            <br>• <code>state.json</code> — неделимый остаток баланса
-            <br>• <code>app.log</code> — файл системных логов (если программа работает некорректно, загляните в него)
-        </small>
     </div>
 </div>
+
+<!-- БЛОК 2: СОЗДАНИЕ И РЕДАКТИРОВАНИЕ -->
+<div class="card mb-4 border-secondary shadow-sm">
+    <div class="card-header bg-secondary text-white font-weight-bold">
+        🛠 Создание и редактирование наград
+    </div>
+    <div class="card-body">
+        <form action="/save-prizes-list" method="POST" id="prizesForm">
+            <div id="prizesContainer">
+                <!-- Динамически выводим текущие награды из стейта -->
+                {{range $index, $prize := .Prizes}}
+                <div class="row g-2 mb-2 prize-row align-items-center">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" name="prize_name[]" value="{{$prize.Name}}" placeholder="Награда" required>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="prize_category[]" value="{{$prize.Category}}" placeholder="Категория (Редкость)" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" name="prize_weight[]" value="{{$prize.Weight}}" placeholder="Процент / Вес" min="1" required>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="removeRow(this)">✕</button>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+            
+            <div class="mt-3 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-success" onclick="addRow()">➕ Добавить награду</button>
+                <button type="submit" class="btn btn-success px-4">💾 Сохранить список</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="col-md-4">
+                <label for="categorySelect" class="form-label mb-0 fw-bold">Выбор категории:</label>
+            </div>
+            <div class="col-md-5">
+                <select class="form-select" id="categorySelect" name="category" required>
+                    <option value="all" selected>🎲 [Все категории]</option>
+                    {{range .Categories}}
+                        <option value="{{.}}">🎯 {{.}}</option>
+                    {{end}}
+                </select>
+            </div>

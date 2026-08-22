@@ -9,12 +9,12 @@ import (
 )
 
 type Config struct {
-	ServerPort            string `json:"server_port"`
-	MinAmountOneSpin      int    `json:"min_amount_one_spin"`
-	ActiveTemplate        string `json:"active_template"`
-	StartDelaySeconds     int    `json:"start_delay_seconds"`
-	SocketConnectionToken string `json:"socket_connection_token"`
-	DaUserID              string `json:"da_user_id"`
+	ServerPort 	string `json:"server_port"`
+	// MinAmountOneSpin      int    `json:"min_amount_one_spin"`
+	// ActiveTemplate        string `json:"active_template"`
+	// StartDelaySeconds     int    `json:"start_delay_seconds"`
+	DaToken 	string `json:"socket_connection_token"`
+	DaUserID 	string `json:"da_user_id"`
 }
 
 var (
@@ -47,12 +47,12 @@ func resolvePath() (string, error) {
 
 func DefaultConfig() Config {
 	return Config{
-		ServerPort:            "8085",
-		MinAmountOneSpin:      100,
-		ActiveTemplate:        "default",
-		StartDelaySeconds:     3,
-		SocketConnectionToken: "",
-		DaUserID:              "",
+		ServerPort: "8085",
+		// MinAmountOneSpin:      100,
+		// ActiveTemplate:        "default",
+		// StartDelaySeconds:     3,
+		DaToken: 	"",
+		DaUserID: 	"",
 	}
 }
 
@@ -113,7 +113,7 @@ func Save(newCfg *Config) error {
 	return nil
 }
 
-func Get() Config {
+func GetConfig() Config {
 	mu.RLock()
 	defer mu.RUnlock()
 	return cfg

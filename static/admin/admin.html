@@ -47,9 +47,6 @@
 
     <!-- 1. Навигация по табам -->
     <ul class="nav nav-pills mb-4 nav-justified" id="adminTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button">📔 Справка</button>
-        </li>
         <li class="nav-item">
             <button class="nav-link active" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button">⚙️ Настройки</button>
         </li>
@@ -62,21 +59,18 @@
     </ul>
 
     <!-- 2. Содержимое вкладок -->
-    <div class="tab-content" id="adminTabsContent">
-        <!-- ТАБ 0: Инструкция -->
-        <div class="tab-pane fade" id="info" role="tabpanel">{{template "tab0.html" .}}</div>
-        
-        <!-- ТАБ 1: Настройки -->
+    <div class="tab-content" id="adminTabsContent">        
+        <!-- ТАБ 1: НАСТРОЙКИ -->
         <div class="tab-pane show active fade" id="settings" role="tabpanel">
             {{template "tab_conf.html" .}}
         </div>
 
-        <!-- ТАБ 2: Загрузка шаблонов -->
+        <!-- ТАБ 2: ОФОРМЛЕНИЕ -->
         <div class="tab-pane fade" id="templates" role="tabpanel">
             {{template "tab_template.html" .}}
         </div>
 
-        <!-- ТАБ: НАГРАДЫ И РУЧНОЙ РЕЖИМ -->
+        <!-- ТАБ 3: РУЧНОЙ РЕЖИМ -->
         <div class="tab-pane fade" id="manual" role="tabpanel">
             {{template "tab_handle.html" .}}
         </div>

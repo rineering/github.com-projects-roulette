@@ -1,48 +1,30 @@
-<h4 class="mb-3">Выбор темы оформления рулетки</h4>
-<p class="text-muted mb-4">Программа сканирует папку <code>templates/</code> рядом с файлом запуска. Чтобы добавить свой дизайн, просто создайте там новую папку с файлами виджета.</p>
+<h4 class="mb-3">Управление оформлением рулетки</h4>
 
-<form method="POST" action="/api/save-template">
-    <div class="card p-4">
-        <div class="row">
-            
-            <!-- Цикл Go: перебирает найденные папки-шаблоны -->
-            {{range .AvailableTemplates}}
-            <div class="col-md-4">
-                <!-- Подсвечиваем синей рамкой карточку, имя которой совпадает с активным шаблоном из конфига -->
-                <div class="card mb-3 {{if eq $ .Config.ActiveTemplate .}}border-primary shadow-sm bg-body-tertiary{{end}}">
-                    <div class="card-body text-center">
-                        <h5 class="card-title text-capitalize">{{.}}</h5>
-                        <p class="card-text small text-muted">Тема из папки <code>templates/{{.}}</code></p>
-                        
-                        <div class="form-check d-inline-block">
-                            <input class="form-check-input" type="radio" name="active_template" value="{{.}}" id="tpl-{{.}}" {{if eq $ .Config.ActiveTemplate .}}checked{{end}}>
-                            <label class="form-check-label fw-semibold" for="tpl-{{.}}">
-                                {{if eq $ .Config.ActiveTemplate .}}Активен{{else}}Выбрать{{end}}
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {{else}}
-            <!-- ЭТОТ БЛОК СРАБОТАЕТ АВТОМАТИЧЕСКИ, ЕСЛИ ПАПОК НЕТ -->
-            <div class="col-12">
-                <div class="alert alert-warning border-warning d-flex align-items-center" role="alert">
-                    <span class="fs-4 me-3">⚠️</span>
-                    <div>
-                        <strong>Активных шаблонов не найдено!</strong> <br>
-                        Папка <code>templates/</code> пуста. Создайте в ней хотя бы одну подпапку (например, <code>default</code>) и положите туда файлы вашей рулетки, чтобы они появились в этом списке.
-                    </div>
-                </div>
-            </div>
-            {{end}}
-
-        </div>
-        
-        <!-- Кнопку сохранения показываем только если есть из чего выбирать -->
-        {{if .AvailableTemplates}}
-        <div class="mt-3 border-top pt-3">
-            <button type="submit" class="btn btn-primary px-4">Сохранить выбор шаблона</button>
-        </div>
-        {{end}}
+<!-- БЛОК 1: СОЗДАНИЕ И ВЫБОР ПРОФИЛЯ -->
+<div class="card mb-4 border-secondary shadow-sm">
+    <div class="card-header bg-secondary text-white font-weight-bold">
+        🛠 Создание и редактирование рулетки
     </div>
-</form>
+    <div class="card-body">
+        <form action="/save-profile" method="POST" id="profilesForm">
+            <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
+
+            <div class="mb-3">
+                <label class="form-label">Минимальная цена прокрутки (руб):</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" name="min_amount_spin" value="{{.Profile.MinAmountSpin}}">
+                    <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Таймаут перед запуском (сек):</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" name="start_delay_seconds" value="{{.Profile.StartDelay}}">
+                    <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+

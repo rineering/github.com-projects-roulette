@@ -1,45 +1,20 @@
 package handlers
 
 import (
-	"embed"
 	"fmt"
-	"html/template"
 	"strconv"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
-	"strings"
-	"io"
-	"encoding/csv"
 
 	"os/exec"
 	"runtime"
 
 	"roulette/config" // Замените на имя вашего модуля из go.mod
 	"roulette/state"
-	"roulette/da"
-	"roulette/hub"
 )
 
-var staticFS *embed.FS
-
-// InitStatic сохраняет вшитую файловую систему внутри пакета handlers
-func InitStatic(fs *embed.FS) {
-	staticFS = fs
-}
-
-// AdminPageData объединяет всё, что нужно отобразить на странице админки
-type AdminPageData struct {
-	Config       		config.Config // Все настройки из config.json
-	TailBalance  		float64       // Баланс в рублях (переведенный из копеек)
-	AlertStatus  		string
-	AppDataPath  		string
-	AvailableTemplates  []string
-	Categories          []string 	  // Список уникальных редкостей для селектора
-	Prizes              []state.Prize // НОВОЕ: Передаем награды в HTML
-}
 
 func HandleHomePage(w http.ResponseWriter, r *http.Request) {
     if r.URL.Path != "/" {
@@ -47,95 +22,6 @@ func HandleHomePage(w http.ResponseWriter, r *http.Request) {
         return
     }
     http.ServeFile(w, r, "static/index.html")
-}
-
-// HandleAdminPage отвечает за отображение главной страницы админки
-func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/admin" {
-		http.NotFound(w, r)
-		return
-	}
-
-	// === ЧАСТЬ 1: Находим и сканируем папку пользовательских шаблонов рулетки ===
-	
-	// Узнаем, где лежит сам исполняемый файл нашей программы (.exe)
-	exePath, err := os.Executable()
-	if err != nil {
-		http.Error(w, "Ошибка определения пути программы", http.StatusInternalServerError)
-		return
-	}
-	exeDir := filepath.Dir(exePath)
-
-	// Строим путь к папке "templates" прямо рядом с программой
-	templatesDir := filepath.Join(exeDir, "templates")
-
-	// Автоматически создаем её при первом запуске, если её ещё нет
-	if err := os.MkdirAll(templatesDir, 0755); err != nil {
-		log.Printf("[Error] Не удалось создать папку templates: %v", err)
-	}
-
-	// Сканируем папку на наличие вложенных папок-шаблонов
-	files, err := os.ReadDir(templatesDir)
-	var available []string
-	if err == nil {
-		for _, f := range files {
-			// Проверяем, что это папка и пропускаем скрытые системные файлы (вроде .DS_Store на Маке)
-			if f.IsDir() && !strings.HasPrefix(f.Name(), ".") {
-				available = append(available, f.Name())
-			}
-		}
-	}
-
-	// === ЧАСТЬ 2: Загружаем сам файл админки admin.html ===
-
-	// Используем template.ParseFS вместо ParseFiles, чтобы читать файл прямо из памяти .exe
-	tmpl, err := template.ParseFiles(
-		"static/admin/admin.html", 
-		"static/admin/tab0.html", 
-		"static/admin/tab_conf.html",
-		"static/admin/tab_template.html",
-		"static/admin/tab_handle.html",
-	)
-	if err != nil {
-		log.Printf("[Error] Не удалось прочитать вшитый шаблон: %v", err)
-		http.Error(w, "Ошибка шаблона", http.StatusInternalServerError)
-		return
-	}
-
-	// === ЧАСТЬ 3: Собираем данные и отправляем стримеру ===
-
-	// Читаем статус из URL (например, /admin?status=success)
-	status := r.URL.Query().Get("status")
-	// Получаем скрытый системный путь (AppData/Roaming или Application Support) для вывода в инструкцию
-	baseDir, _ := os.UserConfigDir()
-	appDir := filepath.Join(baseDir, "RouletteService")
-
-	// catsMap := make(map[string]bool)
-	// for _, prize := range allPrizes {
-	// 	if prize.Category != "" { catsMap[prize.Category] = true }
-	// }
-	// var categories []string
-	// for c := range catsMap { categories = append(categories, c) }
-
-	// Собираем объединенные данные для страницы в структуру
-	data := AdminPageData{
-		Config:             config.Get(),                       // Берем актуальный конфиг
-		TailBalance:        float64(state.GetBalance()) / 100.0, // Переводим копейки в рубли для стримера
-		AlertStatus:        status,                             // Передаем статус (success/error) в HTML
-		AppDataPath:        appDir,                             // Путь к скрытым файлам
-		AvailableTemplates: available,                          // Список папок для таба "Внешний вид"
-		Categories: 		state.GetUniqueCategories(),
-		Prizes: 			state.GetPrizes(),
-	}
-
-	// Устанавливаем заголовки ответа и рендерим страницу в браузер
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	// Рендерим именно главный файл
-	err = tmpl.ExecuteTemplate(w, "admin.html", data)
-	if err != nil {
-		log.Printf("[Error] Ошибка заполнения шаблона: %v", err)
-	}
 }
 
 // HandleSaveConfig принимает данные формы из админки и сохраняет в config.json
@@ -154,10 +40,12 @@ func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	// Переменная для отслеживания ошибок валидации чисел
 	hasError := false
 
-	updatedCfg := config.Get()
+	updatedCfg := config.GetConfig()
 	updatedCfg.ServerPort = r.FormValue("server_port")
 	updatedCfg.DaUserID = r.FormValue("da_user_id")
-	updatedCfg.SocketConnectionToken = r.FormValue("da_token")
+	updatedCfg.DaToken = r.FormValue("da_token")
+
+	activeProfile := state.GetActiveProfile()
 
 	// Конвертируем StartDelaySeconds из строки в int
 	delay, err := strconv.Atoi(r.FormValue("start_delay_seconds"))
@@ -165,7 +53,7 @@ func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		hasError = true
 		log.Printf("[Warning] Не удалось распарсить start_delay_seconds, оставляем старое значение. Ошибка: %v", err)
 	} else {
-		updatedCfg.StartDelaySeconds = delay
+		activeProfile.StartDelay = delay
 	}
 
 	// Конвертируем MinAmountOneSpin из строки в int
@@ -174,7 +62,7 @@ func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 		hasError = true
 		log.Printf("[Warning] Не удалось распарсить min_amount_one_spin, оставляем старое значение. Ошибка: %v", err)
 	} else {
-		updatedCfg.MinAmountOneSpin = minAmount
+		activeProfile.MinAmountSpin = minAmount
 	}
 
 	if err := config.Save(&updatedCfg); err != nil {
@@ -241,208 +129,4 @@ func OpenBrowser(url string) {
     if err := cmd.Start(); err != nil {
         log.Printf("Не удалось открыть браузер автоматически: %v", err)
     }
-}
-
-// 2. НОВОЕ: Обработчик импорта Google Таблицы с учетом объединенных ячеек
-func HandleImportPrizes(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	url := r.FormValue("google_sheets_url")
-	if url == "" {
-		http.Error(w, "URL is required", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("[Import] Запуск скачивания наград по ссылке: %s", url)
-	
-	prizes, err := downloadAndParsePrizes(url)
-	if err != nil {
-		log.Printf("[Import] Ошибка импорта: %v", err)
-		http.Error(w, fmt.Sprintf("Ошибка импорта: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	// Сохраняем обновленный конфиг с новыми наградами в AppData
-	if err := state.UpdatePrizes(prizes); err != nil {
-		log.Printf("[Import] Ошибка сохранения config.json: %v", err)
-		http.Error(w, "Ошибка сохранения локального конфига", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("[Import] Успешно импортировано наград: %d", len(prizes))
-	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
-}
-
-// Вспомогательная функция парсинга «умного» разворота объединенных ячеек
-func downloadAndParsePrizes(url string) ([]state.Prize, error) {
-	if strings.Contains(url, "/edit") {
-		// Отрезаем всё, что идет после /edit (включая сам /edit)
-		parts := strings.Split(url, "/edit")
-		// И собираем прямую ссылку на экспорт первого листа в формате CSV
-		url = parts[0] + "/export?format=csv"
-
-		gid := strings.Split(parts[1], "#")
-		if len(gid) > 1 {
-			url += "&" + gid[1]
-		}
-	}
-	
-	log.Printf("[Parser] Итоговый URL для запроса к Google: %s", url)
-		
-	
-	log.Printf("[Parser] Запрос к эндпоинту Google: %s", url)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("не удалось выполнить запрос: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("google вернул статус: %s", resp.Status)
-	}
-
-	reader := csv.NewReader(resp.Body)
-	reader.Comma = ',' // Так как мы принудительно засилили format=csv
-	reader.FieldsPerRecord = -1
-	reader.LazyQuotes = true 
-	
-	var newPrizes []state.Prize
-	currentRarity := ""
-	currentWeight := 1
-	isFirstRow := true
-
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if isFirstRow {
-			isFirstRow = false
-			continue
-		}
-
-		if len(record) < 1 || strings.TrimSpace(record[0]) == "" {
-			continue
-		}
-
-		prizeName := strings.TrimSpace(record[0])
-
-		if len(record) > 1 && strings.TrimSpace(record[1]) != "" {
-			currentRarity = strings.TrimSpace(record[1])
-		}
-
-		if len(record) > 2 && strings.TrimSpace(record[2]) != "" {
-			weightStr := strings.ReplaceAll(record[2], "%", "")
-			weightStr = strings.TrimSpace(weightStr)
-			if parsedWeight, err := strconv.Atoi(weightStr); err == nil {
-				currentWeight = parsedWeight
-			}
-		}
-
-		newPrizes = append(newPrizes, state.Prize{
-			Category: currentRarity,
-			Name:     prizeName,
-			Weight:   currentWeight,
-		})
-	}
-	return newPrizes, nil
-}
-
-// 3. НОВОЕ: Обработчик кнопки запуска ручного режима
-func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	category := r.FormValue("category")
-	state.SetManualMode(true, category)
-
-	// Асинхронно запускаем прокрутку, чтобы не вешать веб-интерфейс админки
-	go func() {
-		prizes := state.GetPrizes()
-		prize, err := da.SelectRandomPrize(prizes, category)
-		if err != nil {
-			log.Printf("[Manual] Ошибка выбора награды: %v", err)
-			state.SetManualMode(false, "")
-			return
-		}
-
-		log.Printf("[Roulette] РЕЗУЛЬТАТ ВРАЩЕНИЯ: [%s] %s. Отправка в OBS...", prize.Category, prize.Name)
-		
-		// ВЫЗОВ ХАБА: Отправляем команду на запуск колеса в OBS
-		activeTemplate := state.GetActiveTemplate()
-		hub.BroadcastSpin(prize.Name, prize.Category, activeTemplate)
-		
-		// Имитируем время прокрутки рулетки стримера (анимация в CSS длится, например, 10 секунд)
-		// На это время бэкенд блокирует прием сетевых донат-сообщений
-		time.Sleep(10 * time.Second)
-
-		state.SetManualMode(false, "")
-		log.Println("[Manual] Ручной режим завершен, оверлей свободен.")
-	}()
-
-	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
-}
-
-func HandleSavePrizesList(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// Парсим мульти-инпуты формы (массивы prize_name[], prize_category[], prize_weight[])
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Ошибка парсинга формы", http.StatusBadRequest)
-		return
-	}
-
-	names := r.Form["prize_name[]"]
-	categories := r.Form["prize_category[]"]
-	weights := r.Form["prize_weight[]"]
-
-	var updatedPrizes []state.Prize
-
-	for i := 0; i < len(names); i++ {
-		// Проверяем границы срезов, на всякий случай
-		if i >= len(categories) || i >= len(weights) {
-			break
-		}
-
-		name := strings.TrimSpace(names[i])
-		category := strings.TrimSpace(categories[i])
-		
-		weight, err := strconv.Atoi(weights[i])
-		if err != nil || weight < 1 {
-			weight = 1
-		}
-
-		if name != "" {
-			updatedPrizes = append(updatedPrizes, state.Prize{
-				Name:     name,
-				Category: category,
-				Weight:   weight,
-			})
-		}
-	}
-
-	// Сохраняем получившийся список в стейт и на диск в state.json
-	if err := state.UpdatePrizes(updatedPrizes); err != nil {
-		log.Printf("[Admin] Ошибка сохранения отредактированных наград: %v", err)
-		http.Error(w, "Ошибка сохранения списка", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("[Admin] Список наград успешно отредактирован вручную. Всего: %d", len(updatedPrizes))
-	
-	// Перенаправляем обратно на главную
-	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
 }

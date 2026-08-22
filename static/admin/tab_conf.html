@@ -1,16 +1,10 @@
 <form id="configForm" method="POST" action="/api/save-config">
     <div class="card p-4">
         <div class="row g-4">
+            <h5 class="mb-3 text-warning section-title">🔌 Системные параметры</h5>
             
-            <!-- Левая колонка: Системные настройки -->
+            <!-- DA -->
             <div class="col-md-6">
-                <h5 class="mb-3 text-warning section-title">🔌 Системные параметры</h5>
-                
-                <div class="mb-3">
-                    <label class="form-label">Локальный порт сервера:</label>
-                    <input type="text" class="form-control" name="server_port" value="{{.Config.ServerPort}}" placeholder="например: 8080">
-                </div>
-
                 <div class="mb-3">
                     <label class="form-label">DonationAlerts ID пользователя:</label>
                     <input type="text" class="form-control" name="da_user_id" value="{{.Config.DaUserID}}" placeholder="ID из личного кабинета" required>
@@ -19,40 +13,26 @@
                 <div class="mb-3">
                     <label class="form-label">DonationAlerts API Токен:</label>
                     <div class="input-group">
-                        <input type="password" id="daTokenInput" class="form-control" name="da_token" value="{{.Config.SocketConnectionToken}}" placeholder="Токен подключения" required>
+                        <input type="password" id="daTokenInput" class="form-control" name="da_token" value="{{.Config.DaToken}}" placeholder="Токен подключения" required>
                         <button class="btn btn-outline-secondary border-secondary text-muted" type="button" onclick="toggleTokenVisibility()">👁️</button>
                     </div>
                 </div>
             </div>
-
-            <!-- Правая колонка: Параметры рулетки -->
-            <div class="col-md-6">
-                <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
-
+            
+            <!-- Порт -->
+            <div class="col-md-6">               
                 <div class="mb-3">
-                    <label class="form-label">Минимальная цена прокрутки (руб):</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control" name="min_amount_one_spin" value="{{.Config.MinAmountOneSpin}}">
-                        <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Таймаут перед запуском (сек):</label>
-                    <div class="input-group">
-                        <input type="number" class="form-control" name="start_delay_seconds" value="{{.Config.StartDelaySeconds}}">
-                        <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
-                    </div>
+                    <label class="form-label">Локальный порт сервера:</label>
+                    <input type="text" class="form-control" name="server_port" value="{{.Config.ServerPort}}" placeholder="например: 8080">
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Остаток последнего доната:</label>
                     <div class="input-group">
-                        <input type="number" class="form-control" name="saved_donations_tail_balance" step="0.01" value="{{printf "%.2f" .TailBalance}}">
+                        <input type="number" class="form-control" name="saved_donations_tail_balance" step="0.01" value="{{printf "%.2f" .State.DonateTail}}">
                         <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
                     </div>
                 </div>
-
             </div>
 
         </div>
@@ -63,3 +43,26 @@
         </div>
     </div>
 </form>
+
+<div>
+    <div class="card p-4 border-secondary">
+        <div class="card-header bg-secondary text-dark fw-bold">
+            📍 Расположение служебных файлов программы
+        </div>
+        <div class="card-body">
+            <p>Все ваши настройки, текущие остатки донатов и системные логи скрыты в вашей операционной системе, чтобы исключить случайное удаление.</p>
+            <p class="mb-2"><strong>Путь к папке приложения:</strong></p>
+            <div class="input-group">
+                <!-- Выводим наш динамический путь в поле, откуда его удобно скопировать -->
+                <input type="text" class="form-control bg-white" value="{{.AppDataPath}}" readonly id="pathInput">
+                <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('pathInput').value); alert('Путь скопирован!');">Скопировать путь</button>
+            </div>
+            <small class="text-muted d-block mt-2">
+                В этой папке вы найдете: 
+                <br>• <code>config.json</code> — системные настройки
+                <br>• <code>state.json</code> — неделимый остаток баланса
+                <br>• <code>app.log</code> — файл системных логов (если программа работает некорректно, загляните в него)
+            </small>
+        </div>
+    </div>
+</div>
