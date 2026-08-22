@@ -1,30 +1,111 @@
-<h4 class="mb-3">Управление оформлением рулетки</h4>
 
 <!-- БЛОК 1: СОЗДАНИЕ И ВЫБОР ПРОФИЛЯ -->
-<div class="card mb-4 border-secondary shadow-sm">
-    <div class="card-header bg-secondary text-white font-weight-bold">
-        🛠 Создание и редактирование рулетки
+<div class="card mb-4 border-dark shadow-sm">
+    <div class="card-header bg-dark text-white font-weight-bold">
+        🫟 Создание и редактирование рулетки
+
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <select class="form-select form-select-lg" name="profileSelect" onchange="handleProfileChange()">
+                        {{if .State.Profiles}}
+                            <option value="" disabled {{if not .ActiveProfile}}selected{{end}}>-- Выберите рулетку --</option>
+                            {{range .State.Profiles}}
+                                <option value="{{.Slug}}" {{if $.ActiveProfile}}{{if eq $.ActiveProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
+                            {{end}}
+                        {{else}}
+                            <option value="" disabled selected> пусто</option>
+                        {{end}}
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex gap-2">
+                    <button type="button" class="btn btn-primary btn-lg w-100" id="btnCreateProfile" onclick="showForm('create')">
+                        <i class="bi bi-plus-circle me-2"></i>Создать
+                    </button>
+                    <button type="button" class="btn btn-success btn-lg w-100 d-none" id="btnSetActiveProfile" onclick="setActiveProfile()">
+                        <i class="bi bi-check-circle me-2"></i>Сделать активной
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
-        <form action="/save-profile" method="POST" id="profilesForm">
-            <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
 
-            <div class="mb-3">
-                <label class="form-label">Минимальная цена прокрутки (руб):</label>
-                <div class="input-group">
-                    <input type="number" class="form-control" name="min_amount_spin" value="{{.Profile.MinAmountSpin}}">
-                    <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+    <div class="card-body bg-dark text-white"> <!-- Bootstrap темный фон для инпутов, судя по твоим bg-dark у иконок -->
+        
+        <!-- ДИНАМИЧЕСКИЙ КОНТЕЙНЕР: Сюда HTMX будет вставлять саму форму -->
+        <div id="profile-form-container">
+            {{if .ActiveProfile}}
+                <!-- Если при первой загрузке страницы активный профиль есть, сразу рендерим форму -->
+                {{template "profile_form_block" .ActiveProfile}}
+            {{else}}
+                <!-- Если профилей нет вообще или ни один не выбран -->
+                <div class="text-center p-5 text-muted">
+                    <h5>Пожалуйста, выберите существующую рулетку из списка или создайте новую.</h5>
                 </div>
-            </div>
+            {{end}}
+        </div>
 
-            <div class="mb-3">
-                <label class="form-label">Таймаут перед запуском (сек):</label>
-                <div class="input-group">
-                    <input type="number" class="form-control" name="start_delay_seconds" value="{{.Profile.StartDelay}}">
-                    <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
-                </div>
-            </div>
-        </form>
     </div>
 </div>
 
+<!-- ОПРЕДЕЛЯЕМ БЛОК ТВОЕЙ ФОРМЫ КАКОТДЕЛЬНЫЙ ШАБЛОН ВНУТРИ ЭТОГО ЖЕ ФАЙЛА -->
+{{define "profile_form_block"}}
+<form action="/save-profile" method="POST" id="profilesForm">
+    <!-- Скрытое поле, чтобы бэкенд понимал, обновляем мы старый профиль (ID > 0) или создаем новый (ID = 0) -->
+    <input type="hidden" name="system_name" value="{{.Slug}}">
+
+    <div class="card p-4 bg-secondary text-white border-0">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h5 class="mb-3 text-warning section-title">🖌️ Настройки рулетки</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Название:</label>
+                    <div class="input-group">
+                        <!-- Если создаем новый, .Name будет пустым, и инпут будет чистым -->
+                        <input class="form-control" name="name" value="{{.Name}}" required>
+                        <span class="input-group-text bg-dark border-secondary text-muted">📝</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Шаблон оформления</label>
+                    <div class="input-group">
+                        <input class="form-control" name="template" value="{{.Template}}">
+                        <span class="input-group-text bg-dark border-secondary text-muted">шаблон</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Минимальная цена прокрутки (руб):</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="min_amount_spin" value="{{.MinAmountSpin}}">
+                        <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Таймаут перед запуском (сек):</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" name="start_delay_seconds" value="{{.StartDelay}}">
+                        <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопка сохранения всей формы -->
+        <div class="row mt-4">
+            <div class="col-12 text-end">
+                <button type="submit" class="btn btn-primary px-4">
+                    {{if .Slug}}Сохранить изменения{{else}}Создать рулетку{{end}}
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{{end}}

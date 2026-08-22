@@ -88,6 +88,55 @@
 </form>
 
 
+<div class="card-body">
+        <form action="/save-profile" method="POST" id="profilesForm">
+            <div class="card p-4">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h5 class="mb-3 text-warning section-title">🖌️ Настройки рулетки</h5>
+
+                        <div class="mb-3">
+                            <label class="form-label">Название:</label>
+                            <div class="input-group">
+                                <input class="form-control" name="name" value="{{.Profile.Name}}">
+                                <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Шаблон оформления</label>
+                            <div class="input-group">
+                                <input class="form-control" name="active_template" value="{{.Profile.ActiveTemplate}}">
+                                <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="mb-3 text-warning section-title">🎰 Настройки механики</h5>
+
+                        <div class="mb-3">
+                            <label class="form-label">Минимальная цена прокрутки (руб):</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="min_amount_spin" value="{{.Profile.MinAmountSpin}}">
+                                <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Таймаут перед запуском (сек):</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="start_delay_seconds" value="{{.Profile.StartDelay}}">
+                                <span class="input-group-text bg-dark border-secondary text-muted">сек</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+
 <!-- БЛОК 1: ИМПОРТ -->
 <div class="card mb-4 border-primary shadow-sm">
     <div class="card-header bg-primary text-white font-weight-bold">

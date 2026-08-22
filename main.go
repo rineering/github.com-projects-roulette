@@ -19,7 +19,7 @@ func main() {
 	hub.InitHub()
 
 	// 2. Инициализация дефолтных наград в стейте (из Шага 1)
-	state.InitDefaultProfile()
+	//state.InitDefaultProfile()
 
 	// Передаем вшитую статику в пакет handlers при старте
 	handlers.InitStatic(&StaticFS)
@@ -44,9 +44,9 @@ func main() {
     http.HandleFunc("/admin", handlers.HandleAdminPage)
     http.HandleFunc("/api/save-config", handlers.HandleSaveConfig)
     http.HandleFunc("/api/shutdown", handlers.HandleShutdown)
-	http.HandleFunc("/import-prizes", handlers.HandleImportPrizes)
-	http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
-	http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
+	//http.HandleFunc("/import-prizes", handlers.HandleImportPrizes)
+	//http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
+	//http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
 
 	// Роут для подключения OBS по WebSockets
 	http.HandleFunc("/", hub.HandleWs)

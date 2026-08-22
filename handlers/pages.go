@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	//"strconv"
 	"html/template"
 	"log"
 	"net/http"
@@ -14,11 +15,11 @@ import (
 
 // AdminPageData объединяет всё, что нужно отобразить на странице админки
 type AdminPageData struct {
-	Config 		config.Config // config.json
-	State 		state.State // state.json
-	Profile 	state.RouletteProfile // профиль рулетки
-	AlertStatus string
-	AppDataPath string
+	Config 			config.Config // config.json
+	State 			state.State // state.json
+	ActiveProfile 	state.RouletteProfile // профиль активной рулетки
+	AlertStatus 	string
+	AppDataPath 	string
 
 }
 
@@ -46,18 +47,11 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	baseDir, _ := os.UserConfigDir()
 	appDir := filepath.Join(baseDir, "RouletteService")
 
-	// catsMap := make(map[string]bool)
-	// for _, prize := range allPrizes {
-	// 	if prize.Category != "" { catsMap[prize.Category] = true }
-	// }
-	// var categories []string
-	// for c := range catsMap { categories = append(categories, c) }
-
 	// Собираем объединенные данные для страницы в структуру
 	data := AdminPageData{
 		Config: 		config.GetConfig(),
 		State: 			state.GetState(),
-		Profile:		state.GetActiveProfile(),
+		ActiveProfile:	state.GetActiveProfile(),
 		AlertStatus: 	status, // Передаем статус (success/error) в HTML
 		AppDataPath: 	appDir, // Путь к скрытым файлам
 	}
@@ -69,3 +63,35 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Error] Ошибка заполнения шаблона: %v", err)
 	}
 }
+
+// 1. Метод вызывается, когда выбирают профиль в селекте (Запрос от hx-get="/admin/profile/load")
+func loadProfileHandler(w http.ResponseWriter, r *http.Request) {
+	//idStr := r.URL.Query().Get("profile_id")
+	//sysName, _ := strconv.Atoi(idStr)
+
+	activeProfile := state.GetActiveProfile()
+
+	// Парсим тот же файл таба
+	tmpl, _ := template.ParseFiles("static/admin/tab_template.html")
+	
+	// ВАЖНО: Рендерим ТОЛЬКО блок "profile_form_block" и передаем туда структуру профиля
+	tmpl.ExecuteTemplate(w, "profile_form_block", activeProfile)
+}
+
+// 2. Метод вызывается, когда нажали "+ Новая рулетка" (Запрос от hx-get="/admin/profile/new-form")
+func newProfileFormHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, _ := template.ParseFiles("static/admin/tab_handle.html")
+	
+	// Передаем ПУСТУЮ структуру. В инпутах везде будет пусто, а ID будет равен 0
+	emptyProfile := state.RouletteProfile{}
+	tmpl.ExecuteTemplate(w, "profile_form_block", emptyProfile)
+}
+
+//// Конвертируем StartDelaySeconds из строки в int
+	// delay, err := strconv.Atoi(r.FormValue("start_delay_seconds"))
+	// if err != nil {
+	// 	hasError = true
+	// 	log.Printf("[Warning] Не удалось распарсить start_delay_seconds, оставляем старое значение. Ошибка: %v", err)
+	// } else {
+	// 	activeProfile.StartDelay = delay
+	// }

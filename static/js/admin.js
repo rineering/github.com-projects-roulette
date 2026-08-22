@@ -79,3 +79,25 @@ function triggerSpin() {
         setTimeout(() => { btn.disabled = false; }, 2000); // Разблокируем через 2 сек
     });
 }
+
+// Автоматическое переключение таба при загрузке страницы на основе хэша в URL
+document.addEventListener("DOMContentLoaded", function() {
+    var hash = window.location.hash;
+    if (hash) {
+        // Ищем кнопку таба, у которой data-bs-target совпадает с хэшем
+        var triggerEl = document.querySelector('button[data-bs-target="' + hash + '"]');
+        if (triggerEl) {
+            var tab = new bootstrap.Tab(triggerEl);
+            tab.show();
+        }
+    }
+
+    // Бонус: сохраняем хэш в адресную строку, когда пользователь кликает по табам вручную
+    var tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabButtons.forEach(function(button) {
+        button.addEventListener('shown.bs.tab', function (e) {
+            var targetHash = e.target.getAttribute('data-bs-target');
+            history.replaceState(null, null, targetHash);
+        });
+    });
+});

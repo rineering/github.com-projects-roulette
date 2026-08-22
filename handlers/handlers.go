@@ -24,7 +24,7 @@ func HandleHomePage(w http.ResponseWriter, r *http.Request) {
     http.ServeFile(w, r, "static/index.html")
 }
 
-// HandleSaveConfig принимает данные формы из админки и сохраняет в config.json
+// данные формы #configForm - tab_conf.html
 func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
@@ -44,26 +44,6 @@ func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	updatedCfg.ServerPort = r.FormValue("server_port")
 	updatedCfg.DaUserID = r.FormValue("da_user_id")
 	updatedCfg.DaToken = r.FormValue("da_token")
-
-	activeProfile := state.GetActiveProfile()
-
-	// Конвертируем StartDelaySeconds из строки в int
-	delay, err := strconv.Atoi(r.FormValue("start_delay_seconds"))
-	if err != nil {
-		hasError = true
-		log.Printf("[Warning] Не удалось распарсить start_delay_seconds, оставляем старое значение. Ошибка: %v", err)
-	} else {
-		activeProfile.StartDelay = delay
-	}
-
-	// Конвертируем MinAmountOneSpin из строки в int
-	minAmount, err := strconv.Atoi(r.FormValue("min_amount_one_spin"))
-	if err != nil {
-		hasError = true
-		log.Printf("[Warning] Не удалось распарсить min_amount_one_spin, оставляем старое значение. Ошибка: %v", err)
-	} else {
-		activeProfile.MinAmountSpin = minAmount
-	}
 
 	if err := config.Save(&updatedCfg); err != nil {
 		hasError = true
@@ -94,7 +74,7 @@ func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin?status=success", http.StatusSeeOther)
 }
 
-// HandleShutdown останавливает сервер рулетки прямо из браузера
+// останавливает сервер рулетки прямо из браузера
 func HandleShutdown(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	fmt.Fprint(w, "<h3>Сервер рулетки успешно остановлен. Теперь вы можете закрыть эту вкладку.</h3>")
@@ -107,7 +87,7 @@ func HandleShutdown(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
-// openBrowser автоматически открывает указанную ссылку в стандартном браузере ОС
+// автоматически открывает указанную ссылку в браузере
 func OpenBrowser(url string) {
     // Даем серверу полсекунды, чтобы он точно успел подняться в памяти
     time.Sleep(500 * time.Millisecond)
@@ -129,4 +109,18 @@ func OpenBrowser(url string) {
     if err := cmd.Start(); err != nil {
         log.Printf("Не удалось открыть браузер автоматически: %v", err)
     }
+}
+
+// данные формы #configForm - tab_conf.html
+
+// 3. Обработчик сохранения формы (куда отправляет стандартный метод POST из формы)
+func saveProfileHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	
+	//id, _ := strconv.Atoi(r.FormValue("id"))
+	//name := r.FormValue("name")
+	// ... считываешь остальные поля ...
+
+	// Перенаправляем обратно на страницу админки, чтобы обновился и селект
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }

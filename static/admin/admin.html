@@ -51,7 +51,7 @@
             <button class="nav-link active" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button">⚙️ Настройки</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button">🎨 Шаблоны оформления</button>
+            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates" type="button">🎨 Оформление</button>
         </li>
         <li class="nav-item">
             <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button">🕹️ Ручной режим</button>
@@ -84,30 +84,6 @@
 <!-- Подключаем JavaScript от Bootstrap, чтобы табы переключались сами по клику -->
 <script src="/static/js/bootstrap.bundle.min.js"></script>
 <script src="/static/js/admin.js"></script>
-<script src="https://jsdelivr.net"></script>
-
-<script>
-// Автоматическое переключение таба при загрузке страницы на основе хэша в URL
-document.addEventListener("DOMContentLoaded", function() {
-    var hash = window.location.hash;
-    if (hash) {
-        // Ищем кнопку таба, у которой data-bs-target совпадает с хэшем
-        var triggerEl = document.querySelector('button[data-bs-target="' + hash + '"]');
-        if (triggerEl) {
-            var tab = new bootstrap.Tab(triggerEl);
-            tab.show();
-        }
-    }
-
-    // Бонус: сохраняем хэш в адресную строку, когда пользователь кликает по табам вручную
-    var tabButtons = document.querySelectorAll('button[data-bs-toggle="tab"]');
-    tabButtons.forEach(function(button) {
-        button.addEventListener('shown.bs.tab', function (e) {
-            var targetHash = e.target.getAttribute('data-bs-target');
-            history.replaceState(null, null, targetHash);
-        });
-    });
-});
-</script>
+<!--script src="https://jsdelivr.net"></script-->
 </body>
 </html>
