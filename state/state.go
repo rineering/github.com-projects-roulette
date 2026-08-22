@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"log"
 )
 
 type Prize struct {
@@ -49,6 +50,7 @@ var (
 	statePath 		string
 	rouletteMode 	Mode
 	activeProfile 	RouletteProfile
+	profileDir 		string
 )
 
 // создание файла state.json
@@ -113,9 +115,6 @@ func GetState() State {
 
 // Сохранение состояния (включая награды и копейки) в state.json
 func SaveState() error {
-	mu.Lock()
-	defer mu.Unlock()
-
 	userConfig, err := os.UserConfigDir()
 	if err != nil {
 		return err
@@ -136,27 +135,13 @@ func GetBalance() int {
 	return st.DonateTail
 }
 
-// SetBalance принудительно обновляет баланс и записывает в файл
+// обновляет баланс
 func SetBalance(amount int) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	path, err := resolvePath()
-	if err != nil {
-		return err
-	}
-
 	st.DonateTail = amount
-	data, err := json.MarshalIndent(st, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return SaveState()
 }
 
 // Потокобезопасное включение ручного режима
@@ -191,8 +176,104 @@ func GetManualTemplatet() string {
 	return rouletteMode.ManualTemplate
 }
 
+//
+// !----- папка profiles ------! 
+//
+func resolveProfilesDirPath() (string, error) {
+	if profileDir != "" {
+		return profileDir, nil
+	}
+
+	baseDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	appDir := filepath.Join(baseDir, "RouletteService")
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return "", err
+	}
+
+	profileDir = filepath.Join(appDir, "profiles")
+	if err := os.MkdirAll(profileDir, 0755); err != nil {
+		log.Fatalf("Не удалось создать папку для рулеток: %v", err)
+		return "", err
+	}
+	return profileDir, nil
+}
+
+func ReadProfileBySlug(profileSlug string) (*RouletteProfile, error) {
+	dir, err := resolveProfilesDirPath()
+	profilePath := filepath.Join(dir, profileSlug+".json")
+
+	data, err := os.ReadFile(profilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var profile RouletteProfile
+
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return nil, err
+	}
+
+	return &profile, nil
+}
+
 func GetActiveProfile() RouletteProfile {
 	mu.RLock()
+	slug := st.ActiveProfile
+	mu.RUnlock() // Сразу же отпускаем мьютекс!
+	
+	roulette, err := ReadProfileBySlug(slug)
+	if err != nil {
+		return RouletteProfile{}
+	}
+
+	return *roulette
+}
+
+func SetActiveProfile(activeProfileSlug string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	st.ActiveProfile = activeProfileSlug
+	return SaveState()
+}
+
+func SaveProfile(updProfile RouletteProfile) error {
+	mu.Lock()
+	defer mu.Unlock()
+	
+	dir, err := resolveProfilesDirPath()
+	profilePath := filepath.Join(dir, updProfile.Slug+".json")
+
+	data, err := json.MarshalIndent(updProfile, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if err := os.WriteFile(profilePath, data, 0644); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func UpdateProfiles(profiles []RouletteProfile) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	st.Profiles = profiles
+	return SaveState()
+}
+
+func GetAllProfiles() []RouletteProfile {
+	mu.RLock()
 	defer mu.RUnlock()
-	return activeProfile
+	
+	// Допустим, внутри AppState или глобально у вас хранится срез зарегистрированных рулеток
+	cp := make([]RouletteProfile, len(st.Profiles))
+	copy(cp, st.Profiles)
+	return cp
 }

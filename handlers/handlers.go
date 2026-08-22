@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"strings"
 
 	"os/exec"
 	"runtime"
@@ -68,9 +69,6 @@ func HandleSaveConfig(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("[Config] Настройки успешно обновлены!")
 
-	// ВАЖНО: перенаправляем обратно на /admin
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
-	// При успешном исходе добавляем параметр ?status=success
 	http.Redirect(w, r, "/admin?status=success", http.StatusSeeOther)
 }
 
@@ -111,16 +109,87 @@ func OpenBrowser(url string) {
     }
 }
 
-// данные формы #configForm - tab_conf.html
+// 1. создание профиля рулетки с #rouletteProfileForm - tab_template.html
+func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
+		return
+	}
 
-// 3. Обработчик сохранения формы (куда отправляет стандартный метод POST из формы)
-func saveProfileHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		// В случае ошибки парсинга формы уходим на статус error
+		http.Redirect(w, r, "/admin?status=error#templates", http.StatusSeeOther)
+		return
+	}
+
+	slug := strings.TrimSpace(r.FormValue("profile_slug"))
+	name := strings.TrimSpace(r.FormValue("profile_name"))
+
+	if slug == "" || name == "" {
+		http.Error(w, "Slug и Name не могут быть пустыми", http.StatusBadRequest)
+		return
+	}
+
+	rouletteProfile, err := state.ReadProfileBySlug(slug)
+
+	var profile state.RouletteProfile
+
+	if err != nil {
+		// Если профиля еще нет (создается новый), инициализируем дефолтными значениями
+		profile = state.RouletteProfile{
+			Slug: 			"",
+			Name: 			"",
+			Template:    	"",
+			MinAmountSpin: 	10000, // 100 рублей по дефолту
+			StartDelay: 	0,
+			Categories: 	[]state.PrizeCategory{},
+		}
+	} else {
+		profile = *rouletteProfile
+	}
+
+	if (len(profile.Slug) == 0) {
+		profile.Slug = slug
+	}
+	profile.Name = name
+
+	if err := state.SaveProfile(profile); err != nil {
+		log.Printf("[Error] Не удалось сохранить рулетку: %v", err)
+		http.Error(w, "Ошибка сохранения файла рулетки", http.StatusInternalServerError)
+		return
+	}
 	
-	//id, _ := strconv.Atoi(r.FormValue("id"))
-	//name := r.FormValue("name")
-	// ... считываешь остальные поля ...
+	log.Println("[Roulette] Рулетка "+profile.Name+" успешно сохранена.")
 
-	// Перенаправляем обратно на страницу админки, чтобы обновился и селект
-	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+	if (len(state.GetState().ActiveProfile) == 0) {
+		if err := state.SetActiveProfile(profile.Slug); err != nil {
+			log.Printf("[Error] Первая созданная рулетка не активировалась: %v", err)
+		} else {
+			log.Println("[Roulette] Автоматически установили "+profile.Name+" активной рулеткой.")
+		}
+	}
+
+	allProfiles := state.GetAllProfiles() // Напишите этот геттер в модуле state, если его нет
+
+	// Ищем, есть ли уже профиль с таким slug в общем списке, чтобы обновить его
+	found := false
+	for i, p := range allProfiles {
+		if p.Slug == profile.Slug {
+			allProfiles[i] = profile
+			found = true
+			break
+		}
+	}
+	// Если профиль абсолютно новый — добавляем его в общий список
+	if !found {
+		allProfiles = append(allProfiles, profile)
+		log.Println("[Roulette] Добавили "+profile.Name+" в список рулеток.")
+	}
+
+	// Сохраняем обновленный КУМУЛЯТИВНЫЙ список профилей
+	if err := state.UpdateProfiles(allProfiles); err != nil {
+		log.Printf("[Error] Не удалось обновить общий список рулеток: %v", err)
+	}
+
+	http.Redirect(w, r, "/admin?status=success#templates", http.StatusSeeOther)
 }

@@ -8,7 +8,7 @@ import (
     "roulette/config"
     "roulette/handlers"
     "roulette/state"
-    "roulette/hub"
+    //"roulette/hub"
 )
 
 //go:embed static/*
@@ -16,7 +16,7 @@ var StaticFS embed.FS
 
 func main() {
 	// 1. Инициализация WebSocket Хаба
-	hub.InitHub()
+	//hub.InitHub()
 
 	// 2. Инициализация дефолтных наград в стейте (из Шага 1)
 	//state.InitDefaultProfile()
@@ -42,14 +42,15 @@ func main() {
     // 2. Регистрируем обработчики из нашего нового пакета handlers
 	//http.HandleFunc("/", handlers.HandleHomePage)
     http.HandleFunc("/admin", handlers.HandleAdminPage)
-    http.HandleFunc("/api/save-config", handlers.HandleSaveConfig)
-    http.HandleFunc("/api/shutdown", handlers.HandleShutdown)
+    http.HandleFunc("/admin-form/save-config", handlers.HandleSaveConfig)
+    http.HandleFunc("/shutdown", handlers.HandleShutdown)
+	http.HandleFunc("/admin-form/save-profile", handlers.HandleSaveProfile)
 	//http.HandleFunc("/import-prizes", handlers.HandleImportPrizes)
 	//http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
 	//http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
 
 	// Роут для подключения OBS по WebSockets
-	http.HandleFunc("/", hub.HandleWs)
+	//http.HandleFunc("/", hub.HandleWs)
 	// func(w http.ResponseWriter, r *http.Request) {
 	// 	if r.URL.Path != "/" {
 	// 		http.NotFound(w, r)
