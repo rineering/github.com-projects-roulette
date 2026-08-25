@@ -10,12 +10,13 @@ import (
 )
 
 type Prize struct {
-	Id 		int 	`json:"id"`
+	Id 		int64 	`json:"id"`
+	CatId	int 	`json:"cat_id"`
 	Name 	string 	`json:"name"`
 }
 
 type PrizeCategory struct {
-	Id 		int 	`json:"id"`
+	Id 		int64 	`json:"id"`
 	Name 	string 	`json:"name"`
 	Weight 	int 	`json:"weight"`
 	Prizes 	[]Prize `json:"prizes"`
@@ -39,9 +40,9 @@ type Mode struct {
 
 // State хранит текущий неделимый остаток баланса
 type State struct {
-	DonateTail 		int 	`json:"saved_donations_tail_balance"`
-	ActiveProfile 	string 	`json:"active_profile"` // Какая рулетка активна
-	Profiles 		[]RouletteProfile
+	DonateTail 			int 	`json:"saved_donations_tail_balance"`
+	ActiveProfileSlug 	string 	`json:"active_profile"` // Какая рулетка активна
+	Profiles 			[]RouletteProfile
 }
 
 var (
@@ -222,7 +223,7 @@ func ReadProfileBySlug(profileSlug string) (*RouletteProfile, error) {
 
 func GetActiveProfile() RouletteProfile {
 	mu.RLock()
-	slug := st.ActiveProfile
+	slug := st.ActiveProfileSlug
 	mu.RUnlock() // Сразу же отпускаем мьютекс!
 	
 	roulette, err := ReadProfileBySlug(slug)
@@ -237,7 +238,7 @@ func SetActiveProfile(activeProfileSlug string) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	st.ActiveProfile = activeProfileSlug
+	st.ActiveProfileSlug = activeProfileSlug
 	return SaveState()
 }
 

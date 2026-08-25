@@ -64,18 +64,61 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// 1. Метод вызывается, когда выбирают профиль в селекте (Запрос от hx-get="/admin/profile/load")
-func loadProfileHandler(w http.ResponseWriter, r *http.Request) {
-	//idStr := r.URL.Query().Get("profile_id")
-	//sysName, _ := strconv.Atoi(idStr)
+// 1. Метод вызывается, когда выбирают профиль в селекте (Запрос от hx-get="/admin-form/profile")
+func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
+	slug := r.URL.Query().Get("profile_slug")
+	action := r.URL.Query().Get("action")
 
-	activeProfile := state.GetActiveProfile()
+	log.Printf("[Debug] Мы пришли за формой профиля, slug: %s , action: %s", slug, action)
 
-	// Парсим тот же файл таба
-	tmpl, _ := template.ParseFiles("static/admin/tab_template.html")
-	
-	// ВАЖНО: Рендерим ТОЛЬКО блок "profile_form_block" и передаем туда структуру профиля
-	tmpl.ExecuteTemplate(w, "profile_form_block", activeProfile)
+	// Структура, которую мы передадим конкретно во фрагмент формы
+	type FormData struct {
+		Profile       state.RouletteProfile
+		State         state.State
+		ActiveProfile state.RouletteProfile
+	}
+	var data FormData
+
+	data.State = state.GetState()
+	data.ActiveProfile = state.GetActiveProfile()
+
+	// Логика определения того, какой профиль показать в форме:
+	if action == "new" {
+		// Нажали кнопку "Создать" -> отдаем пустой профиль
+		data.Profile = state.RouletteProfile{}
+	} else if slug != "" {
+		// Пользователь сам выбрал профиль в селекте
+		profileL, err := state.ReadProfileBySlug(slug)
+		if err != nil {
+			log.Printf("[Error] Ошибка чтения профиля по slug %s: %v", slug, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		data.Profile = *profileL
+	} else if data.ActiveProfile.Slug != "" {
+		// Сработал триггер `load` при старте страницы: slug пустой, 
+		// но у нас есть активный профиль в базе. Загружаем его по умолчанию!
+		data.Profile = data.ActiveProfile
+	} else {
+		// Вообще ничего нет (база пуста) -> отдаем пустую структуру
+		data.Profile = state.RouletteProfile{}
+	}
+
+	// Парсим файл таба (Используй ParseFiles, как у тебя, если это отдельный вызов)
+	tmpl, err := template.ParseFiles("static/admin/tab_template.html")
+	if err != nil {
+		log.Printf("[Error] Ошибка парсинга файла шаблона: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Важно: имя "tab_template_add_profile" должно быть внутри файла через {{define}}
+	err = tmpl.ExecuteTemplate(w, "tab_template_add_profile", data)
+	if err != nil {
+		log.Printf("[Error] Ошибка выполнения шаблона: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // 2. Метод вызывается, когда нажали "+ Новая рулетка" (Запрос от hx-get="/admin/profile/new-form")

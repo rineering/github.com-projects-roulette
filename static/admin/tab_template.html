@@ -1,3 +1,4 @@
+<script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
 
 <!-- БЛОК 1: СОЗДАНИЕ И ВЫБОР ПРОФИЛЯ -->
 <div class="card mb-4 border-dark shadow-sm">
@@ -7,68 +8,139 @@
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-6">
-                    <select class="form-select form-select-lg" name="profileSelect" onchange="handleProfileChange()">
-                        {{if .State.Profiles}}
-                            <option value="" disabled {{if not .State.ActiveProfile}}selected{{end}}>-- Выберите рулетку --</option>
-                            {{range .State.Profiles}}
-                                <option value="{{.Slug}}" {{if $.ActiveProfile}}{{if eq $.ActiveProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
-                            {{end}}
-                        {{else}}
-                            <option value="" disabled selected> пусто</option>
+                    <select name="profile_slug" 
+                        class="form-select form-select-lg" 
+                        id="profileSelect"
+                        hx-get="admin-form/profile" 
+                        hx-target="#roulette-form-container" 
+                        hx-trigger="load, change">
+                    {{if .State.Profiles}}
+                        <option value="" disabled {{if not .State.ActiveProfileSlug}}selected{{end}}>-- Выберите рулетку --</option>
+                        {{range .State.Profiles}}
+                            <option value="{{.Slug}}" {{if $.ActiveProfile}}{{if eq $.ActiveProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
                         {{end}}
+                    {{else}}
+                        <option value="" disabled selected> пусто</option>
+                    {{end}}
                     </select>
                 </div>
                 <div class="col-md-6 d-flex gap-2">
-                    <button type="button" class="btn btn-primary btn-lg w-100" id="btnCreateProfile" onclick="showForm('create')">
-                        <i class="bi bi-plus-circle me-2"></i>Создать
-                    </button>
-                    <button type="button" class="btn btn-success btn-lg w-100 d-none" id="btnSetActiveProfile" onclick="setActiveProfile()">
-                        <i class="bi bi-check-circle me-2"></i>Сделать активной
+                    {{if .State.Profiles}}
+                    <!-- проверить пришедший профиль с активным и активировать -->
+                        <button type="button" 
+                                class="btn btn-success text-nowrap btn-lg w-100" 
+                                id="btnSetActiveProfile" 
+                                onclick="setActiveProfile()">
+                            ✅ Опубликовать
+                        </button>
+                    {{end}}
+                    <!-- Кнопка "Создать" тоже может запрашивать пустую форму с бэкенда -->
+                    <button type="button" 
+                            class="btn btn-primary text-nowrap btn-lg w-100"
+                            id="btnCreateProfile"
+                            hx-get="admin-form/profile?action=new" 
+                            hx-target="#roulette-form-container">
+                        ➕ Создать
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ОСНОВНАЯ ФОРМА НАСТРОЙКИ (скрыта по умолчанию) -->
-    <div id="configFormContainer" class="d-none">
-        
-        <form action="admin-form/save-profile" method="POST" id="rouletteProfileForm">
-            <!-- БЛОК 1: Основные настройки и Шаблон -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-sliders me-2 text-primary"></i>Название рулетки</span>
-                    <span class="text-muted small" id="formModeBadge">Режим: Создание</span>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Название профиля</label>
-                            <input type="text" name="profile_name" id="profileName" class="form-control" placeholder="Например: Основная" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Технические имя латиницей (Slug)</label>
-                            <input type="text" 
-                                name="profile_slug" 
-                                id="profileSlug" 
-                                class="form-control" 
-                                placeholder="default" 
-                                oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')" 
-                                required
-                            >
+    <div id="roulette-form-container">
+        {{define "tab_template_add_profile"}}
+            <form id="rouletteForm" onsubmit="saveViaJson(event)">
+                <!-- Скрытое поле для ID (если редактируем) -->
+                <input type="hidden" name="slug" value="{{ .Profile.Slug }}">
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-sliders me-2 text-primary"></i>Название рулетки</span>
+                        <span class="badge {{if .Profile.Slug }}bg-warning {{else}}bg-success {{end}}mb-2 d-inline-block">
+                            Режим: {{if .Profile.Slug}}Редактирование {{else}}Создание {{end}}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Название профиля</label>
+                                <input type="text" 
+                                    name="profile_name" 
+                                    id="profileName" 
+                                    class="form-control" 
+                                    placeholder="Например: Основная"
+                                    value="{{ .Profile.Name }}"
+                                    required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Технические имя латиницей (Slug)</label>
+                                <input type="text" 
+                                    name="profile_slug" 
+                                    id="profileSlug" 
+                                    class="form-control" 
+                                    placeholder="default"
+                                    value="{{ .Profile.Slug }}"
+                                    {{if .Profile.Slug }}disabled {{end}}
+                                    oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')"
+                                    required>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Кнопки сохранения -->
-            <div class="d-flex justify-content-end gap-3 mb-5">
-                <button type="button" class="btn btn-light btn-lg px-5" onclick="hideForm()">Отмена</button>
-                <button type="submit" class="btn btn-success btn-lg px-5">Сохранить</button>
-            </div>
-        </form>
+            {{if .Profile.Slug}}
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-tags me-2 text-warning"></i>3. Категории наград и Шансы (Редкость)</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCategoryRow()">
+                            <i class="bi bi-plus-lg me-1"></i>Добавить категорию
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">Внимание: Сумма шансов (весов) всех категорий внутри профиля должна давать 100% для корректной математики в Go-бэкенде.</p>
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle" id="categoriesTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 50%;">Название категории</th>
+                                        <!--th style="width: 20%;">Цветовой маркер (Hex)</th-->
+                                        <th style="width: 40%;">Шанс выпадения (%)</th>
+                                        <th style="width: 10%; text-align: center;">Удалить</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <!-- Динамические или дефолтные строки -->
+                                {{range .Profile.Categories }}
+                                    <tr>
+                                        <input type="hidden" name="cat[{{ .Id }}]['cat_id']" value="{{ .Id }}'">
+                                        <td><input type="text" name="cat[{{ .Id }}]['cat_name']" class="form-control" value="{{ .Name }}" required></td>
+                                        <td><input type="number" name="cat[{{ .Id }}]['cat_weight']" class="form-control" value="{{ .Weight }}" min="0" max="100" step="1" required></td>
+                                        <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
+                                    </tr>
+                                {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {{end}}
 
-        {{if .State.Profiles}}
+                <!-- Кнопки сохранения -->
+                <div class="d-flex justify-content-end gap-3 mb-5">
+                {{if not .Profile.Slug}}
+                    <button type="button" class="btn btn-light btn-lg px-5" onclick="closeRouletteForm()">Отмена</button>
+                {{end}}
+                    <button type="submit" class="btn btn-success btn-lg px-5">Сохранить</button>
+                </div>
+
+            </form>
+        {{end}}
+    </div>
+
+    <!-- ОСНОВНАЯ ФОРМА НАСТРОЙКИ (скрыта по умолчанию) -->
+    <div id="configFormContainer" class="d-none">
+
+        {{if .State.ActiveProfileSlug}}
             <!-- БЛОК 2: Загрузка шаблонов -->
              <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -78,51 +150,7 @@
                     </button>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="/api/save-template">
-                        <div class="card p-4">
-                            <div class="row">
-                                
-                                <!-- Цикл Go: перебирает найденные папки-шаблоны -->
-                                {{range .AvailableTemplates}}
-                                <div class="col-md-4">
-                                    <!-- Подсвечиваем синей рамкой карточку, имя которой совпадает с активным шаблоном из конфига -->
-                                    <div class="card mb-3 {{if eq $ .Config.ActiveTemplate .}}border-primary shadow-sm bg-body-tertiary{{end}}">
-                                        <div class="card-body text-center">
-                                            <h5 class="card-title text-capitalize">{{.}}</h5>
-                                            <p class="card-text small text-muted">Тема из папки <code>templates/{{.}}</code></p>
-                                            
-                                            <div class="form-check d-inline-block">
-                                                <input class="form-check-input" type="radio" name="active_template" value="{{.}}" id="tpl-{{.}}" {{if eq $ .Config.ActiveTemplate .}}checked{{end}}>
-                                                <label class="form-check-label fw-semibold" for="tpl-{{.}}">
-                                                    {{if eq $ .Config.ActiveTemplate .}}Активен{{else}}Выбрать{{end}}
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {{else}}
-                                <!-- ЭТОТ БЛОК СРАБОТАЕТ АВТОМАТИЧЕСКИ, ЕСЛИ ПАПОК НЕТ -->
-                                <div class="col-12">
-                                    <div class="alert alert-warning border-warning d-flex align-items-center" role="alert">
-                                        <span class="fs-4 me-3">⚠️</span>
-                                        <div>
-                                            <strong>Активных шаблонов не найдено!</strong> <br>
-                                            Папка <code>templates/</code> пуста. Создайте в ней хотя бы одну подпапку (например, <code>default</code>) и положите туда файлы вашей рулетки, чтобы они появились в этом списке.
-                                        </div>
-                                    </div>
-                                </div>
-                                {{end}}
-
-                            </div>
-                            
-                            <!-- Кнопку сохранения показываем только если есть из чего выбирать -->
-                            {{if .AvailableTemplates}}
-                            <div class="mt-3 border-top pt-3">
-                                <button type="submit" class="btn btn-primary px-4">Сохранить выбор шаблона</button>
-                            </div>
-                            {{end}}
-                        </div>
-                    </form>
+                    <!-- empty -->
                 </div>
              </div>
 
@@ -207,65 +235,29 @@
 </div>
 
 <script>
-    // Имитация данных бэкенда для демонстрации редактирования
-    const mockProfiles = {
-        "1": { name: "Основная рулетка", slug: "main_roulette", template: "1" },
-        "2": { name: "Новогодний Ивент 2027", slug: "ny_2027", template: "2" },
-        "3": { name: "Для Новичков", slug: "newbies_pack", template: "3" }
-    };
+    const ACTIVE_PROFILE_SLUG = "{{.ActiveProfile.Slug}}"
 
-    function showForm(mode) {
-        const container = document.getElementById('configFormContainer');
-        const badge = document.getElementById('formModeBadge');
-        container.classList.remove('d-none');
-        
-        if (mode === 'create') {
-            badge.innerText = "Режим: Создание нового профиля";
-            badge.className = "badge bg-primary";
-            document.getElementById('profileIdField').value = "";
-            document.getElementById('profileName').value = "";
-            document.getElementById('profileSlug').value = "";
-            document.getElementById('tpl_classic').checked = true;
-        } else {
-            badge.innerText = "Режим: Редактирование профиля";
-            badge.className = "badge bg-warning text-dark";
-        }
-        
-        // Плавный скролл к форме
-        container.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    function hideForm() {
-        document.getElementById('configFormContainer').classList.add('d-none');
-        document.getElementById('profileSelect').value = "";
-        document.getElementById('btnSetActive').classList.add('d-none');
-    }
-
-    function handleProfileChange() {
+    function isActiveProfileSelected() {
         const select = document.getElementById('profileSelect');
-        const btnSetActive = document.getElementById('btnSetActive');
         const val = select.value;
-
-        if (val === "") {
-            btnSetActive.classList.add('d-none');
-            document.getElementById('configFormContainer').classList.add('d-none');
-            return;
+        console.log(val, ACTIVE_PROFILE_SLUG);
+        if (val === ACTIVE_PROFILE_SLUG) {
+            document.getElementById('btnSetActiveProfile').disabled = true;
+        } else {
+            document.getElementById('btnSetActiveProfile').disabled = false;
         }
+    }
+    isActiveProfileSelected();
 
-        // Показываем кнопку "Сделать активным"
-        btnSetActive.classList.remove('d-none');
-        
-        // Переключаем форму в режим редактирования и подставляем мок-данные
-        showForm('edit');
-        document.getElementById('profileIdField').value = val;
-        
-        if (mockProfiles[val]) {
-            document.getElementById('profileName').value = mockProfiles[val].name;
-            document.getElementById('profileSlug').value = mockProfiles[val].slug;
-            const tplId = mockProfiles[val].template;
-            if (tplId === "1") document.getElementById('tpl_classic').checked = true;
-            if (tplId === "2") document.getElementById('tpl_wheel').checked = true;
-            if (tplId === "3") document.getElementById('tpl_cases').checked = true;
+    function closeRouletteForm()
+    {
+        if (ACTIVE_PROFILE_SLUG.length) {
+            htmx.ajax('GET', '/admin-form/profile', {
+                target: '#roulette-form-container',
+                values: { slug: ACTIVE_PROFILE_SLUG }
+            });
+        } else {
+            document.getElementById('roulette-form-container').innerHTML=''
         }
     }
 
@@ -277,20 +269,47 @@
         }
     }
 
+    function saveViaJson(event) {
+        event.preventDefault();
+
+        const categories = [];
+
+        document.querySelectorAll("#categoriesTable tbody tr").forEach(row => {
+            categories.push({
+                id: parseInt(row.querySelector("[name='cat_id[]']").value),
+                name: row.querySelector("[name='cat_name[]']").value,
+                weight: parseInt(row.querySelector("[name='cat_weight[]']").value)
+            });
+        });
+
+        // Отправляем чистый JSON через HTMX!
+        htmx.ajax('POST', '/admin-form/save-profile', {
+            headers: { 'Content-Type': 'application/json' },
+            target: '#roulette-form-container',
+            values: JSON.stringify({ 
+                slug: document.getElementById("#profileSlug").val,
+                name: document.getElementById("#profileName").val,
+                categories: categories 
+            })
+        });
+    }
+
     function deleteRow(btn) {
         const row = btn.closest('tr');
         row.remove();
     }
 
     function addCategoryRow() {
+        const uniqueId = Date.now(); 
+
         const tableBody = document.getElementById('categoriesTable').getElementsByTagName('tbody')[0];
         const newRow = tableBody.insertRow();
-        newRow.innerHTML = `
-            <td><input type="text" name="cat_name[]" class="form-control" placeholder="Название" required></td>
-            <td><input type="number" name="cat_chance[]" class="form-control" placeholder="Шанс %" min="0" max="100" step="0.01" required></td>
-            <td><input type="text" name="cat_key[]" class="form-control" placeholder="Ключ (например, mystic)" required></td>
-            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)"><i class="bi bi-trash"></i></button></td>
-        `;
+
+        newRow.innerHTML = 
+            '<input type="hidden" name="cat[' + uniqueId + '][\'cat_id\']" value="' + uniqueId + '">' +
+            '<td><input type="text" name="cat[' + uniqueId + '][\'cat_name\']" class="form-control" placeholder="Название" required></td>' +
+            '<td><input type="number" name="cat[' + uniqueId + '][\'cat_weight\']" class="form-control" placeholder="Шанс %" min="0" max="100" step="1" required></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
     }
 
     function addItemRow() {

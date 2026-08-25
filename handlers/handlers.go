@@ -123,7 +123,14 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slug := strings.TrimSpace(r.FormValue("profile_slug"))
+	if slug == "" {
+		slug = strings.TrimSpace(r.FormValue("slug"))
+	}
+	
 	name := strings.TrimSpace(r.FormValue("profile_name"))
+	if name == "" {
+		name = strings.TrimSpace(r.FormValue("name"))
+	}
 
 	if slug == "" || name == "" {
 		http.Error(w, "Slug и Name не могут быть пустыми", http.StatusBadRequest)
@@ -161,7 +168,7 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	
 	log.Println("[Roulette] Рулетка "+profile.Name+" успешно сохранена.")
 
-	if (len(state.GetState().ActiveProfile) == 0) {
+	if (len(state.GetState().ActiveProfileSlug) == 0) {
 		if err := state.SetActiveProfile(profile.Slug); err != nil {
 			log.Printf("[Error] Первая созданная рулетка не активировалась: %v", err)
 		} else {
