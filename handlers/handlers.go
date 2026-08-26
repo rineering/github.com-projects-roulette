@@ -10,7 +10,7 @@ import (
 	"time"
 	"io"
 	//"strings"
-	//"encoding/json"
+	"encoding/json"
 
 	"os/exec"
 	"runtime"
@@ -134,11 +134,14 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	queryString := string(bodyBytes)
 	values, err := url.ParseQuery(queryString)
 	if err != nil {
-		panic(err)
+		log.Println("Ошибка парсинга формы:", err)
 	}
 
 	slug := values.Get("slug")
 	name := values.Get("name")
+	
+	categoriesSlice := values["categories"] 
+	//log.Println("Строка категорий:", categoriesRaws)
 
 	if slug == "" || name == "" {
 		http.Error(w, "Slug и Name не могут быть пустыми", http.StatusBadRequest)
@@ -167,6 +170,20 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 		profile.Slug = slug
 	}
 	profile.Name = name
+
+	// Создаем срез для хранения готовых структур
+	var cats []state.PrizeCategory
+
+	// Перебираем каждую JSON-строку в цикле
+	for _, jsonStr := range categoriesSlice {
+		log.Println("Строка категории:", jsonStr)
+		var cat state.PrizeCategory
+		if err := json.Unmarshal([]byte(jsonStr), &cat); err == nil {
+			cats = append(cats, cat)
+		}
+	}
+
+	profile.Categories = cats
 
 	if err := state.SaveProfile(profile); err != nil {
 		log.Printf("[Error] Не удалось сохранить рулетку: %v", err)
