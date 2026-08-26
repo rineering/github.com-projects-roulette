@@ -16,7 +16,7 @@
                         hx-trigger="load, change">
                     {{if .State.Profiles}}
                         <option value="" disabled {{if not .State.ActiveProfileSlug}}selected{{end}}>-- Выберите рулетку --</option>
-                        {{range .State.Profiles}}
+                        {{range .Profiles}}
                             <option value="{{.Slug}}" {{if $.ActiveProfile}}{{if eq $.ActiveProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
                         {{end}}
                     {{else}}
@@ -266,7 +266,11 @@
 </div>
 
 <script>
-    const ACTIVE_PROFILE_SLUG = "{{.ActiveProfile.Slug}}"
+    var ACTIVE_PROFILE_SLUG;
+
+    if (ACTIVE_PROFILE_SLUG === "undefined") {
+        ACTIVE_PROFILE_SLUG = "{{.ActiveProfile.Slug}}"
+    }
 
     function isActiveProfileSelected() {
         const select = document.getElementById('profileSelect');
@@ -301,8 +305,6 @@
     }
 
     function updateItemCatSelect(el) {
-        console.log(el);
-
         const 
             currentValue = el.value,
             categoriesRange = document.querySelectorAll("#categoriesTable tbody tr");
@@ -341,7 +343,6 @@
             var idField = row.querySelector("input[name*='cat_id']"),
                 nameField = row.querySelector("input[name*='cat_name']"),
                 weightField = row.querySelector("input[name*='cat_weight']");
-            //console.log(idField, nameField, weightField);
 
             if (idField) {
                 categories.push({
@@ -356,7 +357,6 @@
             var idField = row.querySelector("input[name*='item_id']"),
                 nameField = row.querySelector("input[name*='item_name']");
                 catField = row.querySelector("select[name*='item_cat']");
-            console.log(catField);
 
             if (idField) {
                 prizes.push({
@@ -375,8 +375,7 @@
             categories: categories,
             prizes: prizes
         };
-
-        console.log(profileSlug, profileName, values);
+        //console.log(profileSlug, profileName, values);
 
         // Отправляем чистый JSON через HTMX!
         htmx.ajax('POST', '/admin-form/save-profile', {
@@ -415,12 +414,4 @@
             '<td><select name="item[' + uniqueId + '][\'item_cat\']" class="item-cat-select form-select text-secondary" onfocus="updateItemCatSelect(this)"><option value="" disabled> пусто</option></select></td>' +
             '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
     }
-
-    // document.addEventListener('click', function (event) {
-    //     if (event.target && event.target.classList.contains('item-cat-select')) {
-    //         //console.log('where now', event.target);
-    //         updateItemCatSelect(event.target);
-    //     }
-    // }, true); 
-
 </script>

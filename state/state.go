@@ -11,7 +11,7 @@ import (
 
 type Prize struct {
 	Id 		int64 	`json:"id"`
-	CatId	int 	`json:"cat_id"`
+	CatId	int64 	`json:"cat_id"`
 	Name 	string 	`json:"name"`
 }
 
@@ -34,16 +34,16 @@ type RouletteProfile struct {
 }
 
 type Mode struct {
-	ManualMode     	bool   `json:"manual_mode"`     // активен ли ручной режим прямо сейчас
-	ManualTemplate 	string `json:"manual_template"` // шаблон используемый для ручного запуска
-	ManualCategory 	string `json:"manual_category"` // какая категория крутится в ручном режиме
+	ManualMode     	bool   			`json:"manual_mode"`     // активен ли ручной режим прямо сейчас
+	ManualTemplate 	string 			`json:"manual_template"` // шаблон используемый для ручного запуска
+	ManualCategory 	string 			`json:"manual_category"` // какая категория крутится в ручном режиме
 }
 
 // State хранит текущий неделимый остаток баланса
 type State struct {
-	DonateTail 			int 	`json:"saved_donations_tail_balance"`
-	ActiveProfileSlug 	string 	`json:"active_profile"` // Какая рулетка активна
-	Profiles 			[]RouletteProfile
+	DonateTail 			int 		`json:"saved_donations_tail_balance"`
+	ActiveProfileSlug 	string 		`json:"active_profile"` // Какая рулетка активна
+	Profiles 			[]string 	`json:"profiles"`
 }
 
 var (
@@ -266,7 +266,11 @@ func UpdateProfiles(profiles []RouletteProfile) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	st.Profiles = profiles
+	var profileSlugs []string
+	for _, prof := range profiles {
+		profileSlugs = append(profileSlugs, prof.Slug)
+	}
+	st.Profiles = profileSlugs
 	return SaveState()
 }
 
@@ -274,9 +278,16 @@ func GetAllProfiles() []RouletteProfile {
 	mu.RLock()
 	defer mu.RUnlock()
 	
-	// Допустим, внутри AppState или глобально у вас хранится срез зарегистрированных рулеток
-	cp := make([]RouletteProfile, len(st.Profiles))
-	copy(cp, st.Profiles)
+	cp := make([]RouletteProfile, 0, len(st.Profiles))
+	for _, slug := range st.Profiles {
+		pr, err := ReadProfileBySlug(slug)
+		if err != nil {
+			log.Printf("[Warning] не смогли получить рулетку %s : %v", slug, err)
+			continue
+		}
+		cp = append(cp, *pr)
+	}
+	//log.Printf("[Debug] GetAllProfiles length:  %d, Length of state,profiles: %d", len(cp), len(st.Profiles))
 	return cp
 }
 

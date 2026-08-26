@@ -145,13 +145,14 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Warning] Значение цены прокрутки неверно: %v", err)
 	}
 	amount := int(amountFloat * 100)
-	
+
 	delay, err := strconv.Atoi(values.Get("delay"))
 	if err != nil {
 		log.Printf("[Warning] Значение таймаута неверно: %v", err)
 	}
 	
 	categoriesSlice := values["categories"] 
+	prizesSlice := values["prizes"]
 	//log.Println("Строка категорий:", categoriesRaws)
 
 	if slug == "" || name == "" {
@@ -186,7 +187,6 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 
 	// Создаем срез для хранения готовых структур
 	var cats []state.PrizeCategory
-
 	// Перебираем каждую JSON-строку в цикле
 	for _, jsonStr := range categoriesSlice {
 		log.Println("Строка категории:", jsonStr)
@@ -195,8 +195,17 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 			cats = append(cats, cat)
 		}
 	}
-
 	profile.Categories = cats
+
+	var prizes []state.Prize
+	for _, itemJson := range prizesSlice {
+		log.Println("Строка награды:", itemJson)
+		var item state.Prize
+		if err := json.Unmarshal([]byte(itemJson), &item); err == nil {
+			prizes = append(prizes, item)
+		}
+	}
+	profile.Prizes = prizes
 
 	if err := state.SaveProfile(profile); err != nil {
 		log.Printf("[Error] Не удалось сохранить рулетку: %v", err)

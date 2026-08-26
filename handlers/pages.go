@@ -18,6 +18,7 @@ type AdminPageData struct {
 	Config 			config.Config // config.json
 	State 			state.State // state.json
 	ActiveProfile 	state.RouletteProfile // профиль активной рулетки
+	Profiles		[]state.RouletteProfile
 	AlertStatus 	string
 	AppDataPath 	string
 
@@ -62,6 +63,7 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 		Config: 		config.GetConfig(),
 		State: 			state.GetState(),
 		ActiveProfile:	state.GetActiveProfile(),
+		Profiles:		state.GetAllProfiles(),
 		AlertStatus: 	status, // Передаем статус (success/error) в HTML
 		AppDataPath: 	appDir, // Путь к скрытым файлам
 	}
@@ -83,7 +85,7 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Структура, которую мы передадим конкретно во фрагмент формы
 	type FormData struct {
-		Profile       state.RouletteProfile
+		Profile       *state.RouletteProfile
 		State         state.State
 		ActiveProfile state.RouletteProfile
 	}
@@ -95,7 +97,7 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Логика определения того, какой профиль показать в форме:
 	if action == "new" {
 		// Нажали кнопку "Создать" -> отдаем пустой профиль
-		data.Profile = state.RouletteProfile{}
+		data.Profile = &state.RouletteProfile{}
 	} else if slug != "" {
 		// Пользователь сам выбрал профиль в селекте
 		profileL, err := state.ReadProfileBySlug(slug)
@@ -104,14 +106,14 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		data.Profile = *profileL
+		data.Profile = profileL
 	} else if data.ActiveProfile.Slug != "" {
 		// Сработал триггер `load` при старте страницы: slug пустой, 
 		// но у нас есть активный профиль в базе. Загружаем его по умолчанию!
-		data.Profile = data.ActiveProfile
+		data.Profile = &data.ActiveProfile
 	} else {
 		// Вообще ничего нет (база пуста) -> отдаем пустую структуру
-		data.Profile = state.RouletteProfile{}
+		data.Profile = &state.RouletteProfile{}
 	}
 
 	tmpl := template.New("static/admin/tab_template.html").Funcs(funcMap)
@@ -129,6 +131,7 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("[Error] Ошибка выполнения шаблона: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
