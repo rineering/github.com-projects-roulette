@@ -19,7 +19,7 @@ type PrizeCategory struct {
 	Id 		int64 	`json:"id"`
 	Name 	string 	`json:"name"`
 	Weight 	int 	`json:"weight"`
-	Prizes 	[]Prize `json:"prizes"`
+	//Prizes 	[]Prize `json:"prizes"`
 }
 
 // Структура отдельной рулетки
@@ -29,7 +29,8 @@ type RouletteProfile struct {
 	Template 		string  		`json:"template"` // шаблон оверлея
 	MinAmountSpin  	int     		`json:"min_amount_spin"` // минимальный донат для прокрутки
 	StartDelay 		int    			`json:"start_delay_seconds"`
-	Categories      []PrizeCategory `json:"prize_categories"`          // список наград
+	Categories      []PrizeCategory `json:"prize_categories"` // список категорий наград
+	Prizes			[]Prize			`json:"prizes"` // список наград
 }
 
 type Mode struct {
@@ -277,4 +278,13 @@ func GetAllProfiles() []RouletteProfile {
 	cp := make([]RouletteProfile, len(st.Profiles))
 	copy(cp, st.Profiles)
 	return cp
+}
+
+func (p *RouletteProfile) GetCategoryName(id int64) string {
+	for _, cat := range p.Categories {
+        if cat.Id == id {
+            return cat.Name
+        }
+    }
+    return "Пусто"
 }

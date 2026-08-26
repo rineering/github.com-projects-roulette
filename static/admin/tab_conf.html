@@ -29,7 +29,7 @@
                 <div class="mb-3">
                     <label class="form-label">Остаток последнего доната:</label>
                     <div class="input-group">
-                        <input type="number" class="form-control" name="saved_donations_tail_balance" step="0.01" value="{{printf "%.2f" .State.DonateTail}}">
+                        <input type="number" class="form-control" name="saved_donations_tail_balance" step="0.01" value="{{ money .State.DonateTail }}">
                         <span class="input-group-text bg-dark border-secondary text-muted">₽</span>
                     </div>
                 </div>

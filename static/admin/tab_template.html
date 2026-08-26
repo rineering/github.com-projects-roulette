@@ -110,6 +110,7 @@
                 </div>
 
             {{if .Profile.Slug}}
+            <!-- Категории -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>💎 Категории наград и Шансы (Редкость)</span>
@@ -139,6 +140,50 @@
                                         <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
                                     </tr>
                                 {{end}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- Награды -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>💍 Награды</span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addItemRow()">
+                            <i class="bi bi-plus-lg me-1"></i>Добавить награду
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle" id="itemsTable">
+                                <thead class="table-info">
+                                    <tr>
+                                        <th style="width: 45%;">Название</th>
+                                        <th style="width: 45%;">Категория</th>
+                                        <!--th style="width: 20%;">Иконка / Изображение</th-->
+                                        <!--th style="width: 10%;">Кол-во / Ценность</th-->
+                                        <th style="width: 10%; text-align: center;">Удалить</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Динамические или дефолтные строки -->
+                                    {{range .Profile.Prizes }}
+                                        <tr>
+                                            <input type="hidden" name="item[{{ .Id }}]['item_id']" value="{{ .Id }}'">
+                                            <td><input type="text" name="item[{{ .Id }}]['item_name']" class="form-control" value="{{ .Name }}" required></td>
+                                            <td>
+                                                <select name="item[{{ .Id }}]['item_cat']" class="item-cat-select form-select text-secondary" onfocus="updateItemCatSelect(this)">
+                                                    {{ if .CatId }}
+                                                        <option value="{{ .CatId }}" selected>{{ $.Profile.GetCategoryName .CatId }}</option>
+                                                    {{ else }}
+                                                        <option value="" selected disabled>Выберите категорию...</option>
+                                                    {{ end }}
+                                                </select>
+                                            </td>
+                                            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
+                                        </tr>
+                                    {{end}}
                                 </tbody>
                             </table>
                         </div>
@@ -174,41 +219,6 @@
                     <!-- empty -->
                 </div>
              </div>
-
-            <!-- БЛОК 3: Категории наград (Редкость) -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-tags me-2 text-warning"></i>3. Категории наград и Шансы (Редкость)</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCategoryRow()">
-                        <i class="bi bi-plus-lg me-1"></i>Добавить категорию
-                    </button>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">Внимание: Сумма шансов (весов) всех категорий внутри профиля должна давать 100% для корректной математики в Go-бэкенде.</p>
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle" id="categoriesTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 35%;">Название категории</th>
-                                    <!--th style="width: 20%;">Цветовой маркер (Hex)</th-->
-                                    <th style="width: 30%;">Шанс выпадения (%)</th>
-                                    <th style="width: 25%;">Системный ID / Ключ</th>
-                                    <th style="width: 10%; text-align: center;">Удалить</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <!-- Динамические или дефолтные строки -->
-                                <tr>
-                                    <td><input type="text" name="cat_name[]" class="form-control" value="Обычное" required></td>
-                                    <td><input type="number" name="cat_chance[]" class="form-control" value="70" min="0" max="100" step="0.01" required></td>
-                                    <td><input type="text" name="cat_key[]" class="form-control" value="common" required></td>
-                                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
 
             <!-- БЛОК 4: Предметы / Награды -->
             <div class="card">
@@ -261,7 +271,7 @@
     function isActiveProfileSelected() {
         const select = document.getElementById('profileSelect');
         const val = select.value;
-        console.log(val, ACTIVE_PROFILE_SLUG);
+        //console.log(val, ACTIVE_PROFILE_SLUG);
         if (val === ACTIVE_PROFILE_SLUG) {
             document.getElementById('btnSetActiveProfile').disabled = true;
         } else {
@@ -286,8 +296,34 @@
         const select = document.getElementById('profileSelect');
         const val = select.value;
         if(val) {
-            alert('Профиль ID ' + val + ' успешно назначен АКТИВНЫМ на бэкенде Go!');
+            alert('Рулетка ID ' + val + ' успешно назначена АКТИВНОЙ на бэкенде Go!');
         }
+    }
+
+    function updateItemCatSelect(el) {
+        console.log(el);
+
+        const 
+            currentValue = el.value,
+            categoriesRange = document.querySelectorAll("#categoriesTable tbody tr");
+        el.innerHTML = '';
+
+        categoriesRange.forEach(tr => {
+            const 
+                oCatId = tr.querySelector("input[name*='cat_id']"),
+                oCatName = tr.querySelector("input[name*='cat_name']");
+            if (oCatId) {
+                const option = document.createElement('option');
+                option.value = oCatId.value;
+                option.textContent = oCatName.value;
+
+                if (oCatId.value === currentValue) {
+                    option.selected = true;
+                }
+                
+                el.appendChild(option);
+            }
+        });
     }
 
     function saveViaJson(event) {
@@ -298,7 +334,8 @@
             profileName = document.getElementById("profileName"),
             profileAmount = document.getElementById("profileAmount"),
             profileDelay = document.getElementById("profileDelay"),
-            categories = [];
+            categories = [],
+            prizes = [];
 
         document.querySelectorAll("#categoriesTable tbody tr").forEach(row => {
             var idField = row.querySelector("input[name*='cat_id']"),
@@ -313,14 +350,30 @@
                     weight: parseInt(weightField.value)
                 });
             }
-        });      
+        });  
+        
+        document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
+            var idField = row.querySelector("input[name*='item_id']"),
+                nameField = row.querySelector("input[name*='item_name']");
+                catField = row.querySelector("select[name*='item_cat']");
+            console.log(catField);
+
+            if (idField) {
+                prizes.push({
+                    id: parseInt(idField.value),
+                    name: nameField.value,
+                    cat_id: parseInt(catField.value)
+                });
+            }
+        });
 
         const values = {
             slug: profileSlug ? profileSlug.value : '',
             name: profileName ? profileName.value : '',
             amount: profileAmount ? profileAmount.value : '',
             delay: profileDelay ? profileDelay.value : '',
-            categories: categories 
+            categories: categories,
+            prizes: prizes
         };
 
         console.log(profileSlug, profileName, values);
@@ -352,20 +405,22 @@
     }
 
     function addItemRow() {
+        const uniqueId = Date.now();
+
         const tableBody = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
         const newRow = tableBody.insertRow();
-        newRow.innerHTML = `
-            <td><input type="text" name="item_name[]" class="form-control" placeholder="Например: Супер Приз" required></td>
-            <td>
-                <select name="item_category[]" class="form-select">
-                    <option value="common">Обычное</option>
-                    <option value="rare">Редкое</option>
-                    <option value="legendary">Легендарное</option>
-                </select>
-            </td>
-            <td><input type="text" name="item_slug[]" class="form-control" placeholder="item_id_key" required></td>
-            <td><input type="number" name="item_amount[]" class="form-control" value="1"></td>
-            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)"><i class="bi bi-trash"></i></button></td>
-        `;
+        newRow.innerHTML = 
+            '<input type="hidden" name="item[' + uniqueId + '][\'item_id\']" value="' + uniqueId + '">' +
+            '<td><input type="text" name="item[' + uniqueId + '][\'item_name\']" class="form-control" placeholder="Название" required></td>' +
+            '<td><select name="item[' + uniqueId + '][\'item_cat\']" class="item-cat-select form-select text-secondary" onfocus="updateItemCatSelect(this)"><option value="" disabled> пусто</option></select></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
     }
+
+    // document.addEventListener('click', function (event) {
+    //     if (event.target && event.target.classList.contains('item-cat-select')) {
+    //         //console.log('where now', event.target);
+    //         updateItemCatSelect(event.target);
+    //     }
+    // }, true); 
+
 </script>
