@@ -110,6 +110,27 @@
                 </div>
 
             {{if .Profile.Slug}}
+            <!-- Импорт из google docs -->
+            <div class="card mb-4 border-primary shadow-sm">
+                <div class="card-header bg-primary text-white font-weight-bold">
+                    📥 Импортировать награды из Google Spreadsheets
+                </div>
+                <div class="card-body">
+                    <div id="importPrizes" class="row g-3 align-items-center">
+                        <div class="col-md-9">
+                            <input type="url" class="form-control" name="google_sheets_url" 
+                                placeholder="https://google.com" required>
+                        </div>
+                        <div class="col-md-3">
+                            <a type="button" onclick="handleImport()" class="btn btn-primary w-100">🔄 Импортировать</a>
+                        </div>
+                    </form>
+                    <div class="form-text text-muted mt-2">
+                        Ссылка не сохраняется в конфигурационный файл на сервере и удерживается только в текущей сессии.
+                    </div>
+                </div>
+            </div>
+
             <!-- Категории -->
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -219,48 +240,6 @@
                     <!-- empty -->
                 </div>
              </div>
-
-            <!-- БЛОК 4: Предметы / Награды -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-gift me-2 text-success"></i>4. Список наград</span>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addItemRow()">
-                        <i class="bi bi-plus-lg me-1"></i>Добавить награду
-                    </button>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-bordered align-middle" id="itemsTable">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 25%;">Название награды</th>
-                                    <th style="width: 20%;">Категория редкости</th>
-                                    <!--th style="width: 20%;">Иконка / Изображение</th-->
-                                    <th style="width: 15%;">Внутреннее ID (Item ID)</th>
-                                    <th style="width: 10%;">Кол-во / Ценность</th>
-                                    <th style="width: 10%; text-align: center;">Удалить</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><input type="text" name="item_name[]" class="form-control" value="100 Золотых монет" required></td>
-                                    <td>
-                                        <select name="item_category[]" class="form-select text-secondary">
-                                            <option value="common" selected>Обычное</option>
-                                            <option value="rare">Редкое</option>
-                                            <option value="legendary">Легендарное</option>
-                                        </select>
-                                    </td>
-                                    <td><input type="text" name="item_slug[]" class="form-control" value="currency_gold_100" required></td>
-                                    <td><input type="number" name="item_amount[]" class="form-control" value="100"></td>
-                                    <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
-                                </tr>
-                                
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         {{end}}
     </div>
 </div>
@@ -413,5 +392,22 @@
             '<td><input type="text" name="item[' + uniqueId + '][\'item_name\']" class="form-control" placeholder="Название" required></td>' +
             '<td><select name="item[' + uniqueId + '][\'item_cat\']" class="item-cat-select form-select text-secondary" onfocus="updateItemCatSelect(this)"><option value="" disabled> пусто</option></select></td>' +
             '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
+    }
+
+    function handleImport() {
+        const 
+            importDiv = document.getElementById("importPrizes"),
+            currentProfileSlug = document.getElementById("profileSlug"),
+            googleSheetsUrlField = importDiv.querySelector("input[name='google_sheets_url']");
+
+
+        // Отправляем чистый JSON через HTMX!
+        htmx.ajax('POST', '/admin-form/import-prizes', {
+            //target: '#roulette-form-container',
+            values: {
+                current_profile_slug: currentProfileSlug ? currentProfileSlug.value : '',
+                google_sheets_url: googleSheetsUrlField ? googleSheetsUrlField.value : '' 
+            }
+        });
     }
 </script>

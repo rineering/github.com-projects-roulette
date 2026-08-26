@@ -46,7 +46,7 @@ func main() {
     http.HandleFunc("/shutdown", handlers.HandleShutdown)
 	http.HandleFunc("/admin-form/profile", handlers.LoadProfileHandler)
 	http.HandleFunc("/admin-form/save-profile", handlers.HandleSaveProfile)
-	//http.HandleFunc("/import-prizes", handlers.HandleImportPrizes)
+	http.HandleFunc("/admin-form/import-prizes", handlers.HandleImportPrizes)
 	//http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
 	//http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
 
