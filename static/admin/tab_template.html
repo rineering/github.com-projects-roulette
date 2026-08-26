@@ -55,7 +55,7 @@
 
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-sliders me-2 text-primary"></i>Название рулетки</span>
+                        <span>🎚️ Основные настройки рулетки</span>
                         <span class="badge {{if .Profile.Slug }}bg-warning {{else}}bg-success {{end}}mb-2 d-inline-block">
                             Режим: {{if .Profile.Slug}}Редактирование {{else}}Создание {{end}}
                         </span>
@@ -85,13 +85,34 @@
                                     required>
                             </div>
                         </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Минимальная цена прокрутки (руб)</label>
+                                <input type="number" 
+                                    name="profile_amount" 
+                                    id="profileAmount" 
+                                    class="form-control"
+                                    min="0"
+                                    step="0.01"
+                                    value="{{ money .Profile.MinAmountSpin }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Таймаут перед запуском (сек)</label>
+                                <input type="number" 
+                                    name="profile_delay" 
+                                    id="profileDelay" 
+                                    class="form-control"
+                                    min="0"
+                                    value="{{ .Profile.StartDelay }}">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
             {{if .Profile.Slug}}
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-tags me-2 text-warning"></i>3. Категории наград и Шансы (Редкость)</span>
+                        <span>💎 Категории наград и Шансы (Редкость)</span>
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCategoryRow()">
                             <i class="bi bi-plus-lg me-1"></i>Добавить категорию
                         </button>
@@ -100,7 +121,7 @@
                         <p class="text-muted small mb-3">Внимание: Сумма шансов (весов) всех категорий внутри профиля должна давать 100% для корректной математики в Go-бэкенде.</p>
                         <div class="table-responsive">
                             <table class="table table-bordered align-middle" id="categoriesTable">
-                                <thead class="table-light">
+                                <thead class="table-warning">
                                     <tr>
                                         <th style="width: 50%;">Название категории</th>
                                         <!--th style="width: 20%;">Цветовой маркер (Hex)</th-->
@@ -275,6 +296,8 @@
         const 
             profileSlug = document.getElementById("profileSlug"),
             profileName = document.getElementById("profileName"),
+            profileAmount = document.getElementById("profileAmount"),
+            profileDelay = document.getElementById("profileDelay"),
             categories = [];
 
         document.querySelectorAll("#categoriesTable tbody tr").forEach(row => {
@@ -295,6 +318,8 @@
         const values = {
             slug: profileSlug ? profileSlug.value : '',
             name: profileName ? profileName.value : '',
+            amount: profileAmount ? profileAmount.value : '',
+            delay: profileDelay ? profileDelay.value : '',
             categories: categories 
         };
 

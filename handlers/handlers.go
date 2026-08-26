@@ -139,6 +139,17 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 
 	slug := values.Get("slug")
 	name := values.Get("name")
+
+	amountFloat, err := strconv.ParseFloat(values.Get("amount"), 64)
+	if err != nil {
+		log.Printf("[Warning] Значение цены прокрутки неверно: %v", err)
+	}
+	amount := int(amountFloat * 100)
+	
+	delay, err := strconv.Atoi(values.Get("delay"))
+	if err != nil {
+		log.Printf("[Warning] Значение таймаута неверно: %v", err)
+	}
 	
 	categoriesSlice := values["categories"] 
 	//log.Println("Строка категорий:", categoriesRaws)
@@ -170,6 +181,8 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 		profile.Slug = slug
 	}
 	profile.Name = name
+	profile.MinAmountSpin = amount
+	profile.StartDelay = delay
 
 	// Создаем срез для хранения готовых структур
 	var cats []state.PrizeCategory

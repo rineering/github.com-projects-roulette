@@ -23,14 +23,24 @@ type AdminPageData struct {
 
 }
 
+func formatMoney(amount int) string {
+	return fmt.Sprintf("%.2f", float64(amount)/100.0)
+}
+
+var funcMap = template.FuncMap{
+		"money": formatMoney,
+	}
+
 func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/admin" {
 		http.NotFound(w, r)
 		return
 	}
 
+	tmpl := template.New("admin.html").Funcs(funcMap)
+	
 	// Используем template.ParseFS вместо ParseFiles, чтобы читать файл прямо из памяти .exe
-	tmpl, err := template.ParseFS(
+	tmpl, err := tmpl.ParseFS(
 		staticFS, 
 		"static/admin/admin.html",
 		"static/admin/tab_conf.html",
@@ -104,8 +114,9 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 		data.Profile = state.RouletteProfile{}
 	}
 
+	tmpl := template.New("static/admin/tab_template.html").Funcs(funcMap)
 	// Парсим файл таба (Используй ParseFiles, как у тебя, если это отдельный вызов)
-	tmpl, err := template.ParseFiles("static/admin/tab_template.html")
+	tmpl, err := tmpl.ParseFiles("static/admin/tab_template.html")
 	if err != nil {
 		log.Printf("[Error] Ошибка парсинга файла шаблона: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
