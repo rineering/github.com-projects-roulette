@@ -5,9 +5,12 @@ import (
 	"strconv"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
-	"strings"
+	"io"
+	//"strings"
+	//"encoding/json"
 
 	"os/exec"
 	"runtime"
@@ -122,15 +125,20 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slug := strings.TrimSpace(r.FormValue("profile_slug"))
-	if slug == "" {
-		slug = strings.TrimSpace(r.FormValue("slug"))
+	// Читаем сырые байты из тела запроса
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println("Ошибка чтения body:", err)
 	}
-	
-	name := strings.TrimSpace(r.FormValue("profile_name"))
-	if name == "" {
-		name = strings.TrimSpace(r.FormValue("name"))
+
+	queryString := string(bodyBytes)
+	values, err := url.ParseQuery(queryString)
+	if err != nil {
+		panic(err)
 	}
+
+	slug := values.Get("slug")
+	name := values.Get("name")
 
 	if slug == "" || name == "" {
 		http.Error(w, "Slug и Name не могут быть пустыми", http.StatusBadRequest)

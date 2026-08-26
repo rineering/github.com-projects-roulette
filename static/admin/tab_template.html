@@ -272,25 +272,39 @@
     function saveViaJson(event) {
         event.preventDefault();
 
-        const categories = [];
+        const 
+            profileSlug = document.getElementById("profileSlug"),
+            profileName = document.getElementById("profileName"),
+            categories = [];
 
         document.querySelectorAll("#categoriesTable tbody tr").forEach(row => {
-            categories.push({
-                id: parseInt(row.querySelector("[name='cat_id[]']").value),
-                name: row.querySelector("[name='cat_name[]']").value,
-                weight: parseInt(row.querySelector("[name='cat_weight[]']").value)
-            });
-        });
+            var idField = row.querySelector("input[name*='cat_id']"),
+                nameField = row.querySelector("input[name*='cat_name']"),
+                weightField = row.querySelector("input[name*='cat_weight']");
+            //console.log(idField, nameField, weightField);
+
+            if (idField) {
+                categories.push({
+                    id: parseInt(idField.value),
+                    name: nameField.value,
+                    weight: parseInt(weightField.value)
+                });
+            }
+        });      
+
+        const values = {
+            slug: profileSlug ? profileSlug.value : '',
+            name: profileName ? profileName.value : '',
+            //categories: categories 
+        };
+
+        console.log(profileSlug, profileName, values);
 
         // Отправляем чистый JSON через HTMX!
         htmx.ajax('POST', '/admin-form/save-profile', {
             headers: { 'Content-Type': 'application/json' },
             target: '#roulette-form-container',
-            values: JSON.stringify({ 
-                slug: document.getElementById("#profileSlug").val,
-                name: document.getElementById("#profileName").val,
-                categories: categories 
-            })
+            values: values
         });
     }
 
