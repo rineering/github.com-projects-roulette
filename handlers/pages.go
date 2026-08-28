@@ -19,6 +19,7 @@ type AdminPageData struct {
 	State 			state.State // state.json
 	ActiveProfile 	state.RouletteProfile // профиль активной рулетки
 	Profiles		[]state.RouletteProfile
+	AvailableTempls []string
 	AlertStatus 	string
 	AppDataPath 	string
 
@@ -64,6 +65,7 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 		State: 			state.GetState(),
 		ActiveProfile:	state.GetActiveProfile(),
 		Profiles:		state.GetAllProfiles(),
+		AvailableTempls:state.GetAvailableTemplates(),
 		AlertStatus: 	status, // Передаем статус (success/error) в HTML
 		AppDataPath: 	appDir, // Путь к скрытым файлам
 	}
@@ -88,6 +90,7 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 		Profile       *state.RouletteProfile
 		State         state.State
 		ActiveProfile state.RouletteProfile
+		AvailableTempls []string
 	}
 	var data FormData
 

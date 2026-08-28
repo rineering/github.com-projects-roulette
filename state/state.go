@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"os"
 	"path/filepath"
 	"sync"
@@ -53,6 +54,7 @@ var (
 	rouletteMode 	Mode
 	activeProfile 	RouletteProfile
 	profileDir 		string
+	templateDir		string
 )
 
 // создание файла state.json
@@ -298,4 +300,50 @@ func (p *RouletteProfile) GetCategoryName(id int64) string {
         }
     }
     return "Пусто"
+}
+
+//
+// !----- папка templates ------! 
+//
+func resolveTemplatesDirPath() (string, error) {
+	if templateDir != "" {
+		return templateDir, nil
+	}
+
+	baseDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+
+	appDir := filepath.Join(baseDir, "RouletteService")
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return "", err
+	}
+
+	templateDir = filepath.Join(appDir, "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		log.Fatalf("Не удалось создать папку для шаблонов рулеток: %v", err)
+		return "", err
+	}
+	return templateDir, nil
+}
+
+func GetAvailableTemplates() []string {
+	mu.RLock()
+	defer mu.RUnlock()
+	
+	dir, err := resolveTemplatesDirPath()
+
+	files, err := os.ReadDir(dir)
+	var available []string
+	if err == nil {
+		for _, f := range files {
+			// Проверяем, что это папка и пропускаем скрытые системные файлы (вроде .DS_Store на Маке)
+			if f.IsDir() && !strings.HasPrefix(f.Name(), ".") {
+				available = append(available, f.Name())
+			}
+		}
+	}
+
+	return available
 }
