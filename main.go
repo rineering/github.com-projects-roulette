@@ -47,8 +47,8 @@ func main() {
 	http.HandleFunc("/admin-form/profile", handlers.LoadProfileHandler)
 	http.HandleFunc("/admin-form/save-profile", handlers.HandleSaveProfile)
 	http.HandleFunc("/admin-form/import-prizes", handlers.HandleImportPrizes)
+	http.HandleFunc("/admin-form/upload-template", handlers.HandleUploadTemplate)
 	//http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
-	//http.HandleFunc("/save-prizes-list", handlers.HandleSavePrizesList)
 
 	// Роут для подключения OBS по WebSockets
 	//http.HandleFunc("/", hub.HandleWs)

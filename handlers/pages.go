@@ -17,7 +17,7 @@ import (
 type AdminPageData struct {
 	Config 			config.Config // config.json
 	State 			state.State // state.json
-	ActiveProfile 	state.RouletteProfile // профиль активной рулетки
+	CurrentProfile 	state.RouletteProfile // профиль активной рулетки
 	Profiles		[]state.RouletteProfile
 	AvailableTempls []string
 	AlertStatus 	string
@@ -59,11 +59,26 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 	baseDir, _ := os.UserConfigDir()
 	appDir := filepath.Join(baseDir, "RouletteService")
 
+	var curProfile state.RouletteProfile
+
+	if queryProfileSlug := r.URL.Query().Get("profile"); queryProfileSlug != "" {
+		p, err := state.ReadProfileBySlug(queryProfileSlug)
+		if err != nil {
+			log.Printf("[Error] Не подгрузился профиль по query slug. Ошибка: %v", err)
+		} else {
+			curProfile = *p
+		}
+	}
+	
+	if curProfile.Slug == "" {
+		curProfile = state.GetActiveProfile()
+	}
+
 	// Собираем объединенные данные для страницы в структуру
 	data := AdminPageData{
 		Config: 		config.GetConfig(),
 		State: 			state.GetState(),
-		ActiveProfile:	state.GetActiveProfile(),
+		CurrentProfile:	curProfile,
 		Profiles:		state.GetAllProfiles(),
 		AvailableTempls:state.GetAvailableTemplates(),
 		AlertStatus: 	status, // Передаем статус (success/error) в HTML
@@ -146,12 +161,3 @@ func newProfileFormHandler(w http.ResponseWriter, r *http.Request) {
 	emptyProfile := state.RouletteProfile{}
 	tmpl.ExecuteTemplate(w, "profile_form_block", emptyProfile)
 }
-
-//// Конвертируем StartDelaySeconds из строки в int
-	// delay, err := strconv.Atoi(r.FormValue("start_delay_seconds"))
-	// if err != nil {
-	// 	hasError = true
-	// 	log.Printf("[Warning] Не удалось распарсить start_delay_seconds, оставляем старое значение. Ошибка: %v", err)
-	// } else {
-	// 	activeProfile.StartDelay = delay
-	// }

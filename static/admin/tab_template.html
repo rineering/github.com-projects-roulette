@@ -17,7 +17,7 @@
                     {{if .State.Profiles}}
                         <option value="" disabled {{if not .State.ActiveProfileSlug}}selected{{end}}>-- Выберите рулетку --</option>
                         {{range .Profiles}}
-                            <option value="{{.Slug}}" {{if $.ActiveProfile}}{{if eq $.ActiveProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
+                            <option value="{{.Slug}}" {{if $.CurrentProfile}}{{if eq $.CurrentProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
                         {{end}}
                     {{else}}
                         <option value="" disabled selected> пусто</option>
@@ -47,13 +47,13 @@
         </div>
     </div>
 
-    <div id="roulette-form-container">
+    <div id="roulette-form-container" class="mt-4">
         {{define "tab_template_add_profile"}}
             <form id="rouletteForm" onsubmit="saveViaJson(event)">
                 <!-- Скрытое поле для ID (если редактируем) -->
                 <input type="hidden" name="slug" value="{{ .Profile.Slug }}">
 
-                <div class="card">
+                <div class="card mb-5">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>🎚️ Основные настройки рулетки</span>
                         <span class="badge {{if .Profile.Slug }}bg-warning {{else}}bg-success {{end}}mb-2 d-inline-block">
@@ -111,11 +111,11 @@
 
             {{if .Profile.Slug}}
             <!-- Загрузка шаблона -->
-                <div class="card">
+                <div class="card mb-5">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>🖌️ Выбор визуального шаблона (скина) рулетки</span>
                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('downloadTemplates').classList.remove('d-none')">
-                            <i class="bi bi-plus-lg me-1"></i>Добавить шаблон
+                            Добавить шаблон
                         </button>
                     </div>
                     
@@ -139,7 +139,7 @@
                     </div>
                     {{else}}
                     <div class="col-12">
-                        <div class="alert alert-warning border-warning d-flex align-items-center" role="alert">
+                        <div class="alert alert-danger border-danger d-flex align-items-center" role="alert">
                             <span class="fs-4 me-3">⚠️</span>
                             <div>
                                 <strong>Активных шаблонов не найдено!</strong>
@@ -147,16 +147,16 @@
                         </div>
                     </div>
                     {{end}}
-                    <div id="downloadTemplates" class="card-body {{if .AvailableTempls}} d-none {{end}}">
+                    <div id="downloadTemplates" class="card-body {{if .AvailableTempls}} d-none {{end}}" hx-encoding="multipart/form-data" hx-trigger="none">
                         <div class="row g-3 align-items-center mb-3">
-                            <input type="file" class="form-control" placeholder="Файлы" name="tmpl_files[]" multiple {{if eq (len .AvailableTempls) 0}} required{{end}}>
+                            <input type="file" class="form-control" name="template_file" accept=".html,.zip" {{if eq (len .AvailableTempls) 0}} required{{end}}>
                         </div>
-                        <div class="d-flex justify-content-end gap-3 mb-5">
-                            <div class="col-md-6">
-                                <input type="text" class="form-control" placeholder="Slug имя" name="tmpl_slug" {{if eq (len .AvailableTempls) 0}} required{{end}} oninput="this.value = this.value.replace(/[^a-zA-Z0-9]/g, '')">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="col-md-6 text-muted">Название шаблона сформируется из названия файла</div>
+                            <div class="col-md-6 d-flex gap-3">
+                                <a type="button" class="btn btn-secondary w-50" onclick="document.getElementById('downloadTemplates').classList.add('d-none')">Отменить</a>
+                                <a type="button" class="btn btn-danger w-50" onclick="handleUploadTemplate(event)">Загрузить</a>
                             </div>
-                            <a type="button" class="btn btn-secondary w-100" onclick="document.getElementById('downloadTemplates').classList.add('d-none')">Отменить</a>
-                            <a type="button" class="btn btn-warning w-100" onclick="handleDownload()">Загрузить</a>
                         </div>
                     </div>
                 
@@ -169,7 +169,7 @@
                 </div>
 
             <!-- Импорт из google docs -->
-                <div class="card mb-4 border-primary shadow-sm">
+                <div class="card mb-2 border-primary shadow-sm">
                     <div class="card-header bg-primary text-white font-weight-bold">
                         📥 Импортировать награды из Google Spreadsheets
                     </div>
@@ -180,7 +180,7 @@
                                     placeholder="https://google.com">
                             </div>
                             <div class="col-md-3">
-                                <a type="button" onclick="handleImport()" class="btn btn-primary w-100">🔄 Импортировать</a>
+                                <a type="button" onclick="handleImportPrizes()" class="btn btn-primary w-100">🔄 Импортировать</a>
                             </div>
                         </div>
                         <div class="form-text text-muted mt-2">
@@ -287,7 +287,7 @@
     var ACTIVE_PROFILE_SLUG;
 
     if (ACTIVE_PROFILE_SLUG === "undefined") {
-        ACTIVE_PROFILE_SLUG = "{{.ActiveProfile.Slug}}"
+        ACTIVE_PROFILE_SLUG = "{{.State.ActiveProfileSlug}}"
     }
 
     function isActiveProfileSelected() {
@@ -393,9 +393,7 @@
             categories: categories,
             prizes: prizes
         };
-        //console.log(profileSlug, profileName, values);
-
-        // Отправляем чистый JSON через HTMX!
+        
         htmx.ajax('POST', '/admin-form/save-profile', {
             headers: { 'Content-Type': 'application/json' },
             target: '#roulette-form-container',
@@ -433,11 +431,7 @@
             '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
     }
 
-    function addTemplate() {
-
-    }
-
-    function handleImport() {
+    function handleImportPrizes() {
         const 
             importDiv = document.getElementById("importPrizes"),
             currentProfileSlug = document.getElementById("profileSlug"),
@@ -453,4 +447,51 @@
             }
         });
     }
+
+function handleUploadTemplate(event) {
+    // 1. Предотвращаем стандартную отправку формы и перезагрузку страницы браузером
+    event.preventDefault();
+
+    const fileInput = document.getElementById("downloadTemplates").querySelector("input[name='template_file']");
+
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert("Выберите файл!");
+        return;
+    }
+
+    console.log(fileInput);
+
+    // 1. Собираем честный FormData. Браузер САМ выставит multipart/form-data заголовок!
+    const formData = new FormData();
+    formData.append("template_file", fileInput.files[0]); // Берем именно первый файл из списка
+
+    const container = document.getElementById('roulette-form-container');
+
+    // 2. Отправляем через нативный fetch, который идеально работает с файлами
+    fetch('/admin-form/upload-template', {
+        method: 'POST',
+        body: formData // Передаем FormData напрямую в body запроса
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Сервер вернул ошибку при загрузке");
+        }
+        return response.text(); // Бэкенд возвращает нам HTML-фрагмент формы
+    })
+    .then(htmlFragment => {
+        // 3. Вставляем пришедший HTML-кусок в контейнер, как это делал htmx.ajax
+        container.innerHTML = htmlFragment;
+        
+        // 4. Просим HTMX просканировать новый кусок кода, чтобы заработали все hx-get/hx-trigger теги внутри него
+        htmx.process(container);
+        
+        fileInput.value = ""; // Очищаем инпут
+        console.log("Шаблон успешно загружен, HTMX контейнер обновлен!");
+    })
+    .catch(error => {
+        console.error("[JS Error] Не удалось загрузить шаблон:", error);
+        alert("Ошибка загрузки файла. Проверьте логи сервера.");
+    });
+}
+
 </script>

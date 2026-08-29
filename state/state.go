@@ -305,7 +305,7 @@ func (p *RouletteProfile) GetCategoryName(id int64) string {
 //
 // !----- папка templates ------! 
 //
-func resolveTemplatesDirPath() (string, error) {
+func ResolveTemplatesDirPath() (string, error) {
 	if templateDir != "" {
 		return templateDir, nil
 	}
@@ -332,7 +332,7 @@ func GetAvailableTemplates() []string {
 	mu.RLock()
 	defer mu.RUnlock()
 	
-	dir, err := resolveTemplatesDirPath()
+	dir, err := ResolveTemplatesDirPath()
 
 	files, err := os.ReadDir(dir)
 	var available []string
