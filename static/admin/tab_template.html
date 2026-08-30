@@ -8,7 +8,7 @@
         <div class="card-body">
             <div class="row g-3 align-items-end">
                 <div class="col-md-6">
-                    <select name="profile_slug" 
+                    <select name="select_profile_slug" 
                         class="form-select form-select-lg" 
                         id="profileSelect"
                         hx-get="admin-form/profile" 
@@ -16,8 +16,8 @@
                         hx-trigger="load, change">
                     {{if .State.Profiles}}
                         <option value="" disabled {{if not .State.ActiveProfileSlug}}selected{{end}}>-- Выберите рулетку --</option>
-                        {{range .Profiles}}
-                            <option value="{{.Slug}}" {{if $.CurrentProfile}}{{if eq $.CurrentProfile.Slug .Slug}}selected{{end}}{{end}}>{{.Name}}</option>
+                        {{range $slug, $name := .State.Profiles}}
+                            <option value="{{$slug}}" {{if $.CurrentProfile}}{{if eq $.CurrentProfile.Slug $slug}}selected{{end}}{{end}}>{{$name}}</option>
                         {{end}}
                     {{else}}
                         <option value="" disabled selected> пусто</option>
@@ -120,7 +120,7 @@
                     </div>
                     
                     <!-- Цикл Go: перебирает найденные папки-шаблоны -->
-                    {{range .AvailableTempls}}
+                    {{range $.AvailableTempls}}
                     <div class="col-md-4">
                         <!-- Подсвечиваем синей рамкой карточку, имя которой совпадает с активным шаблоном из конфига -->
                         <div class="card mb-3 {{if eq $.Profile.Template .}}border-primary shadow-sm bg-body-tertiary{{end}}">
@@ -128,10 +128,10 @@
                                 <h5 class="card-title text-capitalize">{{.}}</h5>
                                 <p class="card-text small text-muted">Тема из папки <code>templates/{{.}}</code></p>
                                 
-                                <div class="form-check d-inline-block">
-                                    <input class="form-check-input" type="radio" name="active_template" value="{{.}}" id="tpl-{{.}}" {{if eq $ .Profile.Template .}}checked{{end}}>
+                                <div id="profileTemplate" class="form-check d-inline-block">
+                                    <input class="form-check-input" type="radio" name="active_template" value="{{.}}" id="tpl-{{.}}" {{if eq $.Profile.Template .}}checked{{end}}>
                                     <label class="form-check-label fw-semibold" for="tpl-{{.}}">
-                                        {{if eq $ .Profile.Template .}}Активен{{else}}Выбрать{{end}}
+                                        {{if eq $.Profile.Template .}}Активен{{else}}Выбрать{{end}}
                                     </label>
                                 </div>
                             </div>
@@ -147,9 +147,9 @@
                         </div>
                     </div>
                     {{end}}
-                    <div id="downloadTemplates" class="card-body {{if .AvailableTempls}} d-none {{end}}" hx-encoding="multipart/form-data" hx-trigger="none">
+                    <div id="downloadTemplates" class="card-body {{if $.AvailableTempls}} d-none {{end}}" hx-encoding="multipart/form-data" hx-trigger="none">
                         <div class="row g-3 align-items-center mb-3">
-                            <input type="file" class="form-control" name="template_file" accept=".html,.zip" {{if eq (len .AvailableTempls) 0}} required{{end}}>
+                            <input type="file" class="form-control" name="template_file" accept=".html,.zip" {{if eq (len $.AvailableTempls) 0}} required{{end}}>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="col-md-6 text-muted">Название шаблона сформируется из названия файла</div>
@@ -161,7 +161,7 @@
                     </div>
                 
                     <!-- Кнопку сохранения показываем только если есть из чего выбирать -->
-                    {{if .AvailableTempls}}
+                    {{if $.AvailableTempls}}
                     <div class="mt-3 border-top pt-3">
                         <button type="submit" class="btn btn-primary px-4">Сохранить выбор шаблона</button>
                     </div>
@@ -291,13 +291,17 @@
     }
 
     function isActiveProfileSelected() {
-        const select = document.getElementById('profileSelect');
-        const val = select.value;
+        const 
+            select = document.getElementById('profileSelect'),
+            val = select.value,
+            btn = document.getElementById('btnSetActiveProfile');
         //console.log(val, ACTIVE_PROFILE_SLUG);
-        if (val === ACTIVE_PROFILE_SLUG) {
-            document.getElementById('btnSetActiveProfile').disabled = true;
-        } else {
-            document.getElementById('btnSetActiveProfile').disabled = false;
+        if (btn) {
+            if (val === ACTIVE_PROFILE_SLUG) {
+                document.getElementById('btnSetActiveProfile').disabled = true;
+            } else {
+                document.getElementById('btnSetActiveProfile').disabled = false;
+            }
         }
     }
     isActiveProfileSelected();
@@ -354,6 +358,8 @@
             profileName = document.getElementById("profileName"),
             profileAmount = document.getElementById("profileAmount"),
             profileDelay = document.getElementById("profileDelay"),
+            divTemplate = document.getElementById("profileTemplate"),
+            profileTemplate = divTemplate ? divTemplate.querySelector('input[name="active_template"]:checked') : null,
             categories = [],
             prizes = [];
 
@@ -390,6 +396,7 @@
             name: profileName ? profileName.value : '',
             amount: profileAmount ? profileAmount.value : '',
             delay: profileDelay ? profileDelay.value : '',
+            template: profileTemplate ? profileTemplate.value : '',
             categories: categories,
             prizes: prizes
         };
@@ -452,7 +459,9 @@ function handleUploadTemplate(event) {
     // 1. Предотвращаем стандартную отправку формы и перезагрузку страницы браузером
     event.preventDefault();
 
-    const fileInput = document.getElementById("downloadTemplates").querySelector("input[name='template_file']");
+    const 
+        currentProfileSlug = document.getElementById("profileSlug"),
+        fileInput = document.getElementById("downloadTemplates").querySelector("input[name='template_file']");
 
     if (!fileInput.files || fileInput.files.length === 0) {
         alert("Выберите файл!");
@@ -464,6 +473,7 @@ function handleUploadTemplate(event) {
     // 1. Собираем честный FormData. Браузер САМ выставит multipart/form-data заголовок!
     const formData = new FormData();
     formData.append("template_file", fileInput.files[0]); // Берем именно первый файл из списка
+    formData.append("current_profile_slug", currentProfileSlug ? currentProfileSlug.value : '')
 
     const container = document.getElementById('roulette-form-container');
 
@@ -473,24 +483,18 @@ function handleUploadTemplate(event) {
         body: formData // Передаем FormData напрямую в body запроса
     })
     .then(response => {
-        if (!response.ok) {
-            throw new Error("Сервер вернул ошибку при загрузке");
-        }
-        return response.text(); // Бэкенд возвращает нам HTML-фрагмент формы
+        if (!response.ok) throw new Error("Ошибка сервера");
+        return response.json(); // Ждем JSON вместо текста
     })
     .then(htmlFragment => {
-        // 3. Вставляем пришедший HTML-кусок в контейнер, как это делал htmx.ajax
-        container.innerHTML = htmlFragment;
-        
-        // 4. Просим HTMX просканировать новый кусок кода, чтобы заработали все hx-get/hx-trigger теги внутри него
-        htmx.process(container);
-        
-        fileInput.value = ""; // Очищаем инпут
-        console.log("Шаблон успешно загружен, HTMX контейнер обновлен!");
+        if (data.redirect) {
+        // JS сам отправляет браузер по нужному адресу
+        window.location.href = data.redirect; 
+    }
     })
     .catch(error => {
-        console.error("[JS Error] Не удалось загрузить шаблон:", error);
-        alert("Ошибка загрузки файла. Проверьте логи сервера.");
+        console.error("[JS Error]:", error);
+        alert("Ошибка загрузки файла.");
     });
 }
 

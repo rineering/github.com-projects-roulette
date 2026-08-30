@@ -139,6 +139,7 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 
 	slug := values.Get("slug")
 	name := values.Get("name")
+	tmpl := values.Get("template")
 
 	amountFloat, err := strconv.ParseFloat(values.Get("amount"), 64)
 	if err != nil {
@@ -184,6 +185,9 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	profile.Name = name
 	profile.MinAmountSpin = amount
 	profile.StartDelay = delay
+	if tmpl != "" {
+		profile.Template = tmpl
+	}
 
 	// Создаем срез для хранения готовых структур
 	var cats []state.PrizeCategory
@@ -195,7 +199,9 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 			cats = append(cats, cat)
 		}
 	}
-	profile.Categories = cats
+	if len(cats) != 0 {
+		profile.Categories = cats
+	}
 
 	var prizes []state.Prize
 	for _, itemJson := range prizesSlice {
@@ -205,7 +211,9 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 			prizes = append(prizes, item)
 		}
 	}
-	profile.Prizes = prizes
+	if len(prizes) != 0 {
+		profile.Prizes = prizes
+	}
 
 	if err := state.SaveProfile(profile); err != nil {
 		log.Printf("[Error] Не удалось сохранить рулетку: %v", err)

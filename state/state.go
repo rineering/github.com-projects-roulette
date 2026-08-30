@@ -42,9 +42,9 @@ type Mode struct {
 
 // State хранит текущий неделимый остаток баланса
 type State struct {
-	DonateTail 			int 		`json:"saved_donations_tail_balance"`
-	ActiveProfileSlug 	string 		`json:"active_profile"` // Какая рулетка активна
-	Profiles 			[]string 	`json:"profiles"`
+	DonateTail 			int 				`json:"saved_donations_tail_balance"`
+	ActiveProfileSlug 	string 				`json:"active_profile"` // Какая рулетка активна
+	Profiles 			map[string]string 	`json:"profiles"`
 }
 
 var (
@@ -268,9 +268,9 @@ func UpdateProfiles(profiles []RouletteProfile) error {
 	mu.Lock()
 	defer mu.Unlock()
 
-	var profileSlugs []string
+	profileSlugs := make(map[string]string, len(profiles))
 	for _, prof := range profiles {
-		profileSlugs = append(profileSlugs, prof.Slug)
+		profileSlugs[prof.Slug] = prof.Name
 	}
 	st.Profiles = profileSlugs
 	return SaveState()

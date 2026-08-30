@@ -74,13 +74,14 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 		curProfile = state.GetActiveProfile()
 	}
 
+	// templs := state.GetAvailableTemplates()
+	// log.Printf("[Debug] GetAvailableTemplates length:  %d", len(templs))
+
 	// Собираем объединенные данные для страницы в структуру
 	data := AdminPageData{
 		Config: 		config.GetConfig(),
 		State: 			state.GetState(),
 		CurrentProfile:	curProfile,
-		Profiles:		state.GetAllProfiles(),
-		AvailableTempls:state.GetAvailableTemplates(),
 		AlertStatus: 	status, // Передаем статус (success/error) в HTML
 		AppDataPath: 	appDir, // Путь к скрытым файлам
 	}
@@ -95,10 +96,10 @@ func HandleAdminPage(w http.ResponseWriter, r *http.Request) {
 
 // 1. Метод вызывается, когда выбирают профиль в селекте (Запрос от hx-get="/admin-form/profile")
 func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
-	slug := r.URL.Query().Get("profile_slug")
+	slug := r.URL.Query().Get("select_profile_slug")
 	action := r.URL.Query().Get("action")
 
-	log.Printf("[Debug] Мы пришли за формой профиля, slug: %s , action: %s", slug, action)
+	//log.Printf("[Debug] Мы пришли за формой профиля, slug: %s , action: %s", slug, action)
 
 	// Структура, которую мы передадим конкретно во фрагмент формы
 	type FormData struct {
@@ -111,6 +112,7 @@ func LoadProfileHandler(w http.ResponseWriter, r *http.Request) {
 
 	data.State = state.GetState()
 	data.ActiveProfile = state.GetActiveProfile()
+	data.AvailableTempls = state.GetAvailableTemplates()
 
 	// Логика определения того, какой профиль показать в форме:
 	if action == "new" {

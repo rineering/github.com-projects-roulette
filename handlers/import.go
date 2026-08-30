@@ -207,6 +207,14 @@ func HandleUploadTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	profileSlug := r.FormValue("current_profile_slug")
+	pr, err := state.ReadProfileBySlug(profileSlug)
+	if err != nil {
+		log.Printf("[Import] Ошибка чтения профиля: %v", err)
+		http.Error(w, fmt.Sprintf("Ошибка чтения профиля: %v", err), http.StatusInternalServerError)
+		return
+	}
+
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if ext != ".zip" && ext != ".html" && ext != ".htm" {
 		http.Error(w, "Разрешены только файлы .html или .zip архивы", http.StatusBadRequest)
@@ -279,10 +287,29 @@ func HandleUploadTemplate(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Template] Успешно распакован ZIP-шаблон: %s", templateName)
 	}
 
+	if pr.Template == "" {
+		pr.Template = templateName
+
+		if err := state.SaveProfile(*pr); err != nil {
+			log.Printf("[Error] Не удалось сохранить рулетку: %v", err)
+			http.Error(w, "Ошибка сохранения файла рулетки", http.StatusInternalServerError)
+			return
+		}
+
+		log.Println("[Roulette] Рулетка "+pr.Name+" успешно сохранена.")
+	}
+
 	// Возвращаемся на вкладку оформления
-	http.Redirect(w, r, "/#templates", http.StatusSeeOther)
+	//http.Redirect(w, r, "/#templates", http.StatusSeeOther)
 	// redirectUrl := fmt.Sprintf("/?profile=%s&status=success#templates", profileSlug)
 	// http.Redirect(w, r, redirectUrl, http.StatusSeeOther)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // Отдаем статус 200 вместо 303
+
+	// Возвращаем JSON с урлом для редиректа
+	redirectUrl := fmt.Sprintf("/?profile=%s&status=success#templates", profileSlug)
+	fmt.Fprintf(w, `{"redirect": "%s"}`, redirectUrl)
 }
 
 // Вспомогательная функция безопасной распаковки ZIP
