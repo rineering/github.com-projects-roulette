@@ -1,7 +1,7 @@
 <script src="https://unpkg.com/htmx.org@1.9.10" crossorigin="anonymous"></script>
 
 <!-- БЛОК 1: СОЗДАНИЕ И ВЫБОР ПРОФИЛЯ -->
-<div class="card mb-4 border-dark shadow-sm">
+<div id="profiles-select-form" class="card mb-4 border-dark shadow-sm">
     <div class="card-header bg-dark text-white font-weight-bold">
         🫟 Создание и редактирование рулетки
 
@@ -51,7 +51,7 @@
         {{define "tab_template_add_profile"}}
             <form id="rouletteForm" onsubmit="saveViaJson(event)">
                 <!-- Скрытое поле для ID (если редактируем) -->
-                <input type="hidden" name="slug" value="{{ .Profile.Slug }}">
+                <input id="hiddenSlug"  type="hidden" name="slug" value="{{ .Profile.Slug }}">
 
                 <div class="card mb-5">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -103,7 +103,7 @@
                                     id="profileDelay" 
                                     class="form-control"
                                     min="0"
-                                    value="{{ .Profile.StartDelay }}">
+                                    value="{{if ne .Profile.StartDelay 0}}{{ .Profile.StartDelay }}{{end}}">
                             </div>
                         </div>
                     </div>
@@ -114,7 +114,7 @@
                 <div class="card mb-5">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>🖌️ Выбор визуального шаблона (скина) рулетки</span>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('downloadTemplates').classList.remove('d-none')">
+                        <button type="button" class="btn btn-outline-light btn-sm" onclick="document.getElementById('downloadTemplates').classList.remove('d-none')">
                             Добавить шаблон
                         </button>
                     </div>
@@ -191,22 +191,28 @@
 
             <!-- Категории -->
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header">
                         <span>💎 Категории наград и Шансы (Редкость)</span>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addCategoryRow()">
-                            <i class="bi bi-plus-lg me-1"></i>Добавить категорию
-                        </button>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted small mb-3">Внимание: Сумма шансов (весов) всех категорий внутри профиля должна давать 100% для корректной математики в Go-бэкенде.</p>
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-outline-light btn-sm" onclick="addCategoryRow()">
+                                <i class="bi bi-plus-lg me-1"></i>Добавить категорию
+                            </button>
+                        </div>
+                        <p class="text-muted small mb-3">
+                            Внимание: Сумма шансов (весов) всех категорий внутри профиля должна давать 100% для корректной математики в Go-бэкенде.
+                        </p>
                         <div class="table-responsive">
                             <table class="table table-bordered align-middle" id="categoriesTable">
                                 <thead class="table-warning">
                                     <tr>
-                                        <th style="width: 50%;">Название категории</th>
+                                        <th style="width: 52%;">Название категории</th>
                                         <!--th style="width: 20%;">Цветовой маркер (Hex)</th-->
-                                        <th style="width: 40%;">Шанс выпадения (%)</th>
-                                        <th style="width: 10%; text-align: center;">Удалить</th>
+                                        <th style="width: 30%;">Шанс выпадения (%)</th>
+                                        <th style="width: 18%; text-align: center;">
+                                            <button type="button" class="btn btn-outline-danger" onclick="deleteAllRows(this)">Удалить всё</button>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -216,7 +222,7 @@
                                         <input type="hidden" name="cat[{{ .Id }}]['cat_id']" value="{{ .Id }}'">
                                         <td><input type="text" name="cat[{{ .Id }}]['cat_name']" class="form-control" value="{{ .Name }}" required></td>
                                         <td><input type="number" name="cat[{{ .Id }}]['cat_weight']" class="form-control" value="{{ .Weight }}" min="0" max="100" step="1" required></td>
-                                        <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
+                                        <td class="text-center"><button type="button" class="btn btn-outline-light btn-sm rm-row-btn" onclick="deleteRow(this)">❌</button></td>
                                     </tr>
                                 {{end}}
                                 </tbody>
@@ -227,22 +233,26 @@
 
             <!-- Награды -->
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header">
                         <span>💍 Награды</span>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addItemRow()">
-                            <i class="bi bi-plus-lg me-1"></i>Добавить награду
-                        </button>
                     </div>
                     <div class="card-body">
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-outline-light btn-sm" onclick="addItemRow()">
+                                <i class="bi bi-plus-lg me-1"></i>Добавить награду
+                            </button>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered align-middle" id="itemsTable">
                                 <thead class="table-info">
                                     <tr>
-                                        <th style="width: 45%;">Название</th>
-                                        <th style="width: 45%;">Категория</th>
+                                        <th style="width: 42%;">Название</th>
+                                        <th style="width: 40%;">Категория</th>
                                         <!--th style="width: 20%;">Иконка / Изображение</th-->
                                         <!--th style="width: 10%;">Кол-во / Ценность</th-->
-                                        <th style="width: 10%; text-align: center;">Удалить</th>
+                                        <th style="width: 18%; text-align: center;">
+                                            <button type="button" class="btn btn-outline-danger" onclick="deleteAllRows(this)">Удалить всё</button>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -260,7 +270,7 @@
                                                     {{ end }}
                                                 </select>
                                             </td>
-                                            <td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>
+                                            <td class="text-center"><button type="button" class="btn btn-outline-light btn-sm rm-row-btn" onclick="deleteRow(this)">❌</button></td>
                                         </tr>
                                     {{end}}
                                 </tbody>
@@ -304,7 +314,7 @@
             }
         }
     }
-    isActiveProfileSelected();
+    //isActiveProfileSelected();
 
     function closeRouletteForm()
     {
@@ -354,6 +364,7 @@
         event.preventDefault();
 
         const 
+            hiddenSlug = document.getElementById("hiddenSlug"),
             profileSlug = document.getElementById("profileSlug"),
             profileName = document.getElementById("profileName"),
             profileAmount = document.getElementById("profileAmount"),
@@ -390,6 +401,7 @@
                 });
             }
         });
+        //console.log(categories, prizes);
 
         const values = {
             slug: profileSlug ? profileSlug.value : '',
@@ -405,6 +417,13 @@
             headers: { 'Content-Type': 'application/json' },
             target: '#roulette-form-container',
             values: values
+        }).then(() => {
+            const select = document.getElementById("profileSelect");
+                console.log(profileSlug ? profileSlug.value : '', profileName ? profileName.value : '');
+                if (select && profileSlug && select.value != profileSlug.value) {
+                    const newOption = new Option(profileName ? profileName.value : '', profileSlug.value, true, true);
+                    select.add(newOption);
+                }
         });
     }
 
@@ -413,29 +432,37 @@
         row.remove();
     }
 
+    function deleteAllRows(btn) {
+        const tbl = btn.closest('table');
+
+            tbl.querySelectorAll('tbody tr').forEach(row => {
+                row.remove();
+            });
+    }
+
     function addCategoryRow() {
         const uniqueId = Date.now(); 
 
         const tableBody = document.getElementById('categoriesTable').getElementsByTagName('tbody')[0];
-        const newRow = tableBody.insertRow();
+        const newRow = tableBody.insertRow(0);
 
         newRow.innerHTML = 
             '<input type="hidden" name="cat[' + uniqueId + '][\'cat_id\']" value="' + uniqueId + '">' +
             '<td><input type="text" name="cat[' + uniqueId + '][\'cat_name\']" class="form-control" placeholder="Название" required></td>' +
             '<td><input type="number" name="cat[' + uniqueId + '][\'cat_weight\']" class="form-control" placeholder="Шанс %" min="0" max="100" step="1" required></td>' +
-            '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
+            '<td class="text-center"><button type="button" class="btn btn-outline-light btn-sm rm-row-btn" onclick="deleteRow(this)">❌</button></td>';
     }
 
     function addItemRow() {
         const uniqueId = Date.now();
 
         const tableBody = document.getElementById('itemsTable').getElementsByTagName('tbody')[0];
-        const newRow = tableBody.insertRow();
+        const newRow = tableBody.insertRow(0);
         newRow.innerHTML = 
             '<input type="hidden" name="item[' + uniqueId + '][\'item_id\']" value="' + uniqueId + '">' +
             '<td><input type="text" name="item[' + uniqueId + '][\'item_name\']" class="form-control" placeholder="Название" required></td>' +
             '<td><select name="item[' + uniqueId + '][\'item_cat\']" class="item-cat-select form-select text-secondary" onfocus="updateItemCatSelect(this)"><option value="" disabled> пусто</option></select></td>' +
-            '<td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteRow(this)">❌</button></td>';
+            '<td class="text-center"><button type="button" class="btn btn-outline-light btn-sm rm-row-btn" onclick="deleteRow(this)">❌</button></td>';
     }
 
     function handleImportPrizes() {
@@ -447,7 +474,7 @@
 
         // Отправляем чистый JSON через HTMX!
         htmx.ajax('POST', '/admin-form/import-prizes', {
-            //target: '#roulette-form-container',
+            target: '#roulette-form-container',
             values: {
                 current_profile_slug: currentProfileSlug ? currentProfileSlug.value : '',
                 google_sheets_url: googleSheetsUrlField ? googleSheetsUrlField.value : '' 
@@ -455,47 +482,45 @@
         });
     }
 
-function handleUploadTemplate(event) {
-    // 1. Предотвращаем стандартную отправку формы и перезагрузку страницы браузером
-    event.preventDefault();
+    function handleUploadTemplate(event) {
+        // 1. Предотвращаем стандартную отправку формы и перезагрузку страницы браузером
+        event.preventDefault();
 
-    const 
-        currentProfileSlug = document.getElementById("profileSlug"),
-        fileInput = document.getElementById("downloadTemplates").querySelector("input[name='template_file']");
+        const 
+            currentProfileSlug = document.getElementById("profileSlug"),
+            fileInput = document.getElementById("downloadTemplates").querySelector("input[name='template_file']");
 
-    if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Выберите файл!");
-        return;
+        if (!fileInput.files || fileInput.files.length === 0) {
+            alert("Выберите файл!");
+            return;
+        }
+
+        // 1. Собираем честный FormData. Браузер САМ выставит multipart/form-data заголовок!
+        const formData = new FormData();
+        formData.append("template_file", fileInput.files[0]); // Берем именно первый файл из списка
+        formData.append("current_profile_slug", currentProfileSlug ? currentProfileSlug.value : '')
+
+        const container = document.getElementById('roulette-form-container');
+
+        // 2. Отправляем через нативный fetch, который идеально работает с файлами
+        fetch('/admin-form/upload-template', {
+            method: 'POST',
+            body: formData // Передаем FormData напрямую в body запроса
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Ошибка сервера");
+            return response.json(); // Ждем JSON вместо текста
+        })
+        .then(data => {
+            if (data.redirect) {
+                // JS сам отправляет браузер по нужному адресу
+                window.location.href = data.redirect; 
+            }
+        })
+        .catch(error => {
+            console.error("[JS Error]:", error);
+            alert("Ошибка загрузки файла.");
+        });
     }
-
-    console.log(fileInput);
-
-    // 1. Собираем честный FormData. Браузер САМ выставит multipart/form-data заголовок!
-    const formData = new FormData();
-    formData.append("template_file", fileInput.files[0]); // Берем именно первый файл из списка
-    formData.append("current_profile_slug", currentProfileSlug ? currentProfileSlug.value : '')
-
-    const container = document.getElementById('roulette-form-container');
-
-    // 2. Отправляем через нативный fetch, который идеально работает с файлами
-    fetch('/admin-form/upload-template', {
-        method: 'POST',
-        body: formData // Передаем FormData напрямую в body запроса
-    })
-    .then(response => {
-        if (!response.ok) throw new Error("Ошибка сервера");
-        return response.json(); // Ждем JSON вместо текста
-    })
-    .then(htmlFragment => {
-        if (data.redirect) {
-        // JS сам отправляет браузер по нужному адресу
-        window.location.href = data.redirect; 
-    }
-    })
-    .catch(error => {
-        console.error("[JS Error]:", error);
-        alert("Ошибка загрузки файла.");
-    });
-}
 
 </script>

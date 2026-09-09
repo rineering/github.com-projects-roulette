@@ -66,7 +66,7 @@ func HandleImportPrizes(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[Import] Успешно импортировано наград: %d", len(prizes))
 
-	redirectUrl := fmt.Sprintf("/?profile=%s&status=success#templates", profileSlug)
+	redirectUrl := fmt.Sprintf("/admin?profile=%s&status=success#templates", profileSlug)
 	http.Redirect(w, r, redirectUrl, http.StatusSeeOther)
 }
 
@@ -308,7 +308,7 @@ func HandleUploadTemplate(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK) // Отдаем статус 200 вместо 303
 
 	// Возвращаем JSON с урлом для редиректа
-	redirectUrl := fmt.Sprintf("/?profile=%s&status=success#templates", profileSlug)
+	redirectUrl := fmt.Sprintf("/admin?profile=%s&status=success#templates", profileSlug)
 	fmt.Fprintf(w, `{"redirect": "%s"}`, redirectUrl)
 }
 

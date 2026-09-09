@@ -29,6 +29,11 @@ body {
     color: #252530 !important;
 }
 
+/* кнопка удаления строк */
+.rm-row-btn {
+    font-size: 1.2rem !important;
+}
+
 /* Кастомизация табов */
 .nav-pills {
     background-color: var(--bg-card);

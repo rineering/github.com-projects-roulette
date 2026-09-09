@@ -281,7 +281,7 @@ func GetAllProfiles() []RouletteProfile {
 	defer mu.RUnlock()
 	
 	cp := make([]RouletteProfile, 0, len(st.Profiles))
-	for _, slug := range st.Profiles {
+	for slug, _ := range st.Profiles {
 		pr, err := ReadProfileBySlug(slug)
 		if err != nil {
 			log.Printf("[Warning] не смогли получить рулетку %s : %v", slug, err)
