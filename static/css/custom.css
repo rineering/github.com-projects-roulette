@@ -114,3 +114,14 @@ body {
     right: 20px;
     z-index: 1050;
 }
+
+.hndl-btn-container {
+    margin-top: 1.5rem;
+    margin-bottom: 0.7rem;
+}
+
+@media (min-width: 768px) {
+    .hndl-btn-container {
+        margin-left: 30%;
+    }
+}

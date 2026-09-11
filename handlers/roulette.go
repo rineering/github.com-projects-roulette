@@ -1,54 +1,56 @@
 package handlers
 
+import (
+	//"strconv"
+	"log"
+	"net/http"
+	"time"
+	//"strings"
 
-// import (
-// 	"strconv"
-// 	"log"
-// 	"net/http"
-// 	"time"
-// 	"strings"
+	"roulette/state"
+	"roulette/da"
+	"roulette/hub"
+)
 
-// 	"roulette/state"
-// 	"roulette/da"
-// 	"roulette/hub"
-// )
+// Обработчик кнопки запуска ручного режима
+func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-// // Обработчик кнопки запуска ручного режима
-// func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
-// 	if r.Method != http.MethodPost {
-// 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-// 		return
-// 	}
+	state.SetManualMode(true)
 
-// 	category := r.FormValue("category")
-// 	state.SetManualMode(true, category)
+	activeProfile := state.GetActiveProfile()
 
-// 	// Асинхронно запускаем прокрутку, чтобы не вешать веб-интерфейс админки
-// 	go func() {
-// 		prizes := state.GetPrizes()
-// 		prize, err := da.SelectRandomPrize(prizes, category)
-// 		if err != nil {
-// 			log.Printf("[Manual] Ошибка выбора награды: %v", err)
-// 			state.SetManualMode(false, "")
-// 			return
-// 		}
+	// Асинхронно запускаем прокрутку, чтобы не вешать веб-интерфейс админки
+	go func() {
+		prizes := activeProfile.Prizes
+		categories := activeProfile.Categories
+		log.Printf("[Manual] Количество наград %d", len(prizes))
+		prize, err := da.SelectRandomPrize(prizes, categories)
+		if err != nil {
+			log.Printf("[Manual] Ошибка выбора награды: %v", err)
+			state.SetManualMode(false)
+			return
+		}
 
-// 		log.Printf("[Roulette] РЕЗУЛЬТАТ ВРАЩЕНИЯ: [%s] %s. Отправка в OBS...", prize.Category, prize.Name)
+		log.Printf("[Roulette] РЕЗУЛЬТАТ ВРАЩЕНИЯ: %s. Отправка в OBS...", prize.Name)
 		
-// 		// ВЫЗОВ ХАБА: Отправляем команду на запуск колеса в OBS
-// 		activeTemplate := state.GetActiveTemplate()
-// 		hub.BroadcastSpin(prize.Name, prize.Category, activeTemplate)
+		// ВЫЗОВ ХАБА: Отправляем команду на запуск колеса в OBS
+		activeTemplate := state.GetActiveProfile().Template
+		hub.BroadcastSpin(prize.Name, activeTemplate)
 		
-// 		// Имитируем время прокрутки рулетки стримера (анимация в CSS длится, например, 10 секунд)
-// 		// На это время бэкенд блокирует прием сетевых донат-сообщений
-// 		time.Sleep(10 * time.Second)
+		// Имитируем время прокрутки рулетки стримера (анимация в CSS длится, например, 10 секунд)
+		// На это время бэкенд блокирует прием сетевых донат-сообщений
+		time.Sleep(10 * time.Second)
 
-// 		state.SetManualMode(false, "")
-// 		log.Println("[Manual] Ручной режим завершен, оверлей свободен.")
-// 	}()
+		state.SetManualMode(false)
+		log.Println("[Manual] Ручной режим завершен, оверлей свободен.")
+	}()
 
-// 	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
-// }
+	http.Redirect(w, r, "/admin#manual", http.StatusSeeOther)
+}
 
 // func HandleSavePrizesList(w http.ResponseWriter, r *http.Request) {
 // 	if r.Method != http.MethodPost {

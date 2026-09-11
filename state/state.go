@@ -149,13 +149,11 @@ func SetBalance(amount int) error {
 }
 
 // Потокобезопасное включение ручного режима
-func SetManualMode(active bool, template string, category string) {
+func SetManualMode(active bool) {
 	mu.Lock()
 	defer mu.Unlock()
 	
 	rouletteMode.ManualMode = active
-	rouletteMode.ManualTemplate = template
-	rouletteMode.ManualCategory = category
 	
 	// Флаги ручного режима можно даже НЕ сохранять в state.json,
 	// чтобы при перезапуске микросервиса ручной режим всегда сбрасывался в false!
@@ -168,17 +166,13 @@ func IsManualMode() bool {
 	return rouletteMode.ManualMode
 }
 
-func GetManualCategory() string {
-	mu.RLock()
-	defer mu.RUnlock()
-	return rouletteMode.ManualCategory
-}
+// func GetPrizes() []Prize {
+// 	return GetActiveProfile().Prizes
+// }
 
-func GetManualTemplatet() string {
-	mu.RLock()
-	defer mu.RUnlock()
-	return rouletteMode.ManualTemplate
-}
+// func GetCategories() []PrizeCategory {
+// 	return GetActiveProfile().Categories
+// }
 
 //
 // !----- папка profiles ------! 
