@@ -137,6 +137,10 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 		log.Println("Ошибка парсинга формы:", err)
 	}
 
+	/**
+	* TODO:
+	* slug - должен задвать здесь, а не браться из поля формы
+	**/
 	slug := values.Get("slug")
 	name := values.Get("name")
 	tmpl := values.Get("template")
