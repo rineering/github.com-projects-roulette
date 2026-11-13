@@ -12,6 +12,10 @@ import (
 	"roulette/hub"
 )
 
+/**
+* TODO: добиться прокрутки рулетки в obs от ручного запуска
+**/
+
 // Обработчик кнопки запуска ручного режима
 func HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

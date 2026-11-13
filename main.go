@@ -37,15 +37,15 @@ func main() {
     }
 
     // 2. Регистрируем обработчики из нашего нового пакета handlers
-	http.HandleFunc("/", handlers.HandleHomePage)
-    http.HandleFunc("/admin", handlers.HandleAdminPage)
-    http.HandleFunc("/admin-form/save-config", handlers.HandleSaveConfig)
-    http.HandleFunc("/shutdown", handlers.HandleShutdown)
-	http.HandleFunc("/admin-form/profile", handlers.LoadProfileHandler)
-	http.HandleFunc("/admin-form/save-profile", handlers.HandleSaveProfile)
-	http.HandleFunc("/admin-form/import-prizes", handlers.HandleImportPrizes)
-	http.HandleFunc("/admin-form/upload-template", handlers.HandleUploadTemplate)
-	http.HandleFunc("/save-manual", handlers.HandleTriggerManual)
+	http.HandleFunc("/", handlers.HandleHomePage) // страница показа рулетки - для OBS
+    http.HandleFunc("/admin", handlers.HandleAdminPage) // страница админки
+    http.HandleFunc("/admin-form/save-config", handlers.HandleSaveConfig) // сохранение конфигов
+    http.HandleFunc("/shutdown", handlers.HandleShutdown) // выключение
+	http.HandleFunc("/admin-form/profile", handlers.LoadProfileHandler) // загрузка профиля рулетки
+	http.HandleFunc("/admin-form/save-profile", handlers.HandleSaveProfile) // сохранение профиля
+	http.HandleFunc("/admin-form/import-prizes", handlers.HandleImportPrizes) // импорт призов из гугл-таблиц
+	http.HandleFunc("/admin-form/upload-template", handlers.HandleUploadTemplate) // загрузка файлов для рулетки
+	http.HandleFunc("/save-manual", handlers.HandleTriggerManual) // ручной запуск рулетки
 
 	// Роут для подключения OBS по WebSockets
 	//http.HandleFunc("/", hub.HandleWs)
