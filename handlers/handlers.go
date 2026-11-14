@@ -11,6 +11,8 @@ import (
 	"io"
 	//"strings"
 	"encoding/json"
+	"crypto/sha256"
+	"encoding/hex"
 
 	"os/exec"
 	"runtime"
@@ -112,6 +114,11 @@ func OpenBrowser(url string) {
     }
 }
 
+func HashConfigLocation(name string) string {
+	str := sha256.Sum256([]byte(name))
+	return hex.EncodeToString(str[:]) // Строка из 64 символов [0-9a-f]
+}
+
 // 1. создание профиля рулетки с #rouletteProfileForm - tab_template.html
 func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -137,13 +144,9 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 		log.Println("Ошибка парсинга формы:", err)
 	}
 
-	/**
-	* TODO:
-	* slug - должен задвать здесь, а не браться из поля формы
-	**/
-	slug := values.Get("slug")
 	name := values.Get("name")
 	tmpl := values.Get("template")
+	slug := HashConfigLocation(name)
 
 	amountFloat, err := strconv.ParseFloat(values.Get("amount"), 64)
 	if err != nil {
