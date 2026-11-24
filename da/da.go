@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"fmt"
 	//"strings"
-	"roulette/state"
+	"github.com/projects/roulette/state"
 )
 
 // Глобальная (или внутри структуры) функция выбора награды

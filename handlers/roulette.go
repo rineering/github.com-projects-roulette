@@ -7,9 +7,9 @@ import (
 	"time"
 	//"strings"
 
-	"roulette/state"
-	"roulette/da"
-	"roulette/hub"
+	"github.com/projects/roulette/state"
+	"github.com/projects/roulette/da"
+	"github.com/projects/roulette/hub"
 )
 
 /**

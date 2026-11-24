@@ -17,8 +17,8 @@ import (
 	"os/exec"
 	"runtime"
 
-	"roulette/config" // Замените на имя вашего модуля из go.mod
-	"roulette/state"
+	"github.com/projects/roulette/config" // Замените на имя вашего модуля из go.mod
+	"github.com/projects/roulette/state"
 )
 
 

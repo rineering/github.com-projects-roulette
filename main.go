@@ -5,10 +5,10 @@ import (
     "log"
     "net/http"
 
-    "roulette/config"
-    "roulette/handlers"
-    "roulette/state"
-    "roulette/hub"
+    "github.com/projects/roulette/config"
+    "github.com/projects/roulette/handlers"
+    "github.com/projects/roulette/state"
+    "github.com/projects/roulette/hub"
 )
 
 //go:embed static/*

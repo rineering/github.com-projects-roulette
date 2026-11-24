@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"archive/zip"
 
-	"roulette/state"
+	"github.com/projects/roulette/state"
 )
 
 //

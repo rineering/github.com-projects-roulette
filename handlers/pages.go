@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"roulette/config"
-	"roulette/state"
+	"github.com/projects/roulette/config"
+	"github.com/projects/roulette/state"
 )
 
 // AdminPageData объединяет всё, что нужно отобразить на странице админки

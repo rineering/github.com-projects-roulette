@@ -1,4 +1,4 @@
-module roulette
+module github.com/projects/roulette
 
 go 1.26.5
 
